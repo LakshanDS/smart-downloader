@@ -1,27 +1,56 @@
-# Phase 1: Database Design & Implementation
+# Phase 1: Database Design & Foundation
 
-**Objective:** Build the data model and SQLite foundation that all components will depend on.
+**Objective:** Build the data model and SQLite foundation for a single-user personal bot with queue-based download system.
+
+## Key Changes from Original Plan
+
+- **Single-user focus**: Owner chat ID lock, no multi-user isolation
+- **Queue-based downloads**: Sequential processing, one-at-a-time
+- **Metadata-first validation**: File size stored before download
+- **Retry tracking**: Exponential backoff (0s → 2min → 8min)
+- **Favorites system**: Watch Later functionality
+- **Progress tracking**: Real-time speed, ETA, upload progress
 
 ## Database Schema
 
 ### Core Tables
 
 ```sql
--- Media Library (your downloaded files)
+-- Media Library (completed downloads only)
 CREATE TABLE media (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_id TEXT UNIQUE,                    -- Telegram file_id from userbot
     title TEXT NOT NULL,
-    file_id TEXT,                    -- Telegram file_id from uploader bot
     file_name TEXT,
-    file_size INTEGER,               -- Bytes
-    duration INTEGER,                 -- Seconds (if video/audio)
-    category TEXT NOT NULL,           -- 'movie', 'tv', 'porn', 'custom'
-    source_url TEXT,                  -- Original URL or magnet link
-    source_type TEXT,                 -- 'torrent', 'direct', 'unsupported'
-    download_status TEXT DEFAULT 'pending', -- 'pending', 'downloading', 'completed', 'failed'
-    uploaded_at DATETIME,             -- When sent to uploader bot
-    user_id INTEGER NOT NULL,          -- Who requested this download
-    chat_id INTEGER NOT NULL,         -- Chat session (per-user library)
+    file_size INTEGER,                      -- Bytes
+    duration INTEGER,                       -- Seconds (if video/audio)
+    category TEXT NOT NULL,                 -- 'movie', 'tv', 'porn', 'custom'
+    source_url TEXT,                        -- Original URL or magnet link
+    source_type TEXT,                       -- 'torrent', 'direct', 'crawler'
+    download_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    hash TEXT,                              -- For duplicate detection
+    is_favorite BOOLEAN DEFAULT 0,          -- Watch Later / Favorites
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Download Queue (pending + active downloads)
+CREATE TABLE downloads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    url TEXT NOT NULL,
+    source TEXT,                            -- 'torrent', 'direct', 'crawler'
+    status TEXT DEFAULT 'pending',          -- 'pending', 'downloading', 'uploading', 'completed', 'failed'
+    progress INTEGER DEFAULT 0,             -- 0-100
+    retry_count INTEGER DEFAULT 0,          -- Track retry attempts
+    added_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    error_message TEXT,
+    file_size INTEGER,                      -- Pre-validated size (bytes)
+    title TEXT,                             -- Extracted from metadata
+    download_speed REAL,                    -- Current speed (MB/s)
+    upload_speed REAL,                      -- Current upload speed (MB/s)
+    eta_seconds INTEGER,                    -- Estimated time remaining
+    message_id INTEGER,                     -- Bot progress message ID
+    chat_id INTEGER,                        -- For progress updates
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,46 +61,28 @@ CREATE TABLE categories (
     name TEXT UNIQUE NOT NULL,
     description TEXT,
     display_order INTEGER DEFAULT 0,
-    icon TEXT,                      -- Emoji or icon identifier
+    icon TEXT,                              -- Emoji identifier
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Download Queue (tracks active downloads)
-CREATE TABLE downloads (
-    gid TEXT PRIMARY KEY,              -- aria2c GID or unique ID
-    status TEXT DEFAULT 'pending',    -- 'pending', 'active', 'completed', 'failed', 'paused'
-    progress INTEGER DEFAULT 0,         -- 0-100
-    download_speed INTEGER,            -- Bytes per second
-    total_size INTEGER,
-    downloaded INTEGER,
-    eta_seconds INTEGER,               -- Estimated time remaining
-    chat_id INTEGER NOT NULL,
-    message_id INTEGER NOT NULL,        -- To update progress inline
-    media_id INTEGER,                  -- Links to media table
-    source_url TEXT,
-    source_type TEXT,
-    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+-- Owner lock (single-user only)
+CREATE TABLE owner (
+    id INTEGER PRIMARY KEY CHECK (id = 1),  -- Singleton table
+    chat_id INTEGER UNIQUE NOT NULL,        -- Owner's Telegram chat ID
+    user_id INTEGER UNIQUE NOT NULL,        -- Owner's Telegram user ID
+    username TEXT,                          -- Owner's username
+    locked_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Chat Sessions (for auto-clear management)
-CREATE TABLE chat_sessions (
-    chat_id INTEGER PRIMARY KEY,
-    last_activity DATETIME DEFAULT CURRENT_TIMESTAMP,
-    auto_clear_enabled BOOLEAN DEFAULT 1,
-    auto_clear_hours INTEGER DEFAULT 24,
-    message_count INTEGER DEFAULT 0
-);
-
--- User Preferences (per-user settings)
-CREATE TABLE user_preferences (
-    user_id INTEGER PRIMARY KEY,
+-- User preferences (single row for owner)
+CREATE TABLE preferences (
+    chat_id INTEGER PRIMARY KEY,            -- Owner's chat ID (foreign key)
     default_category TEXT DEFAULT 'movie',
-    auto_clear_enabled BOOLEAN DEFAULT 1,
+    auto_clear_enabled BOOLEAN DEFAULT 0,   -- Optional feature
     auto_clear_hours INTEGER DEFAULT 24,
-    notification_enabled BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chat_id) REFERENCES owner(chat_id)
 );
 
 -- Activity Log (for debugging/auditing)
@@ -79,8 +90,8 @@ CREATE TABLE activity_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     chat_id INTEGER NOT NULL,
-    action TEXT NOT NULL,             -- 'download_started', 'download_completed', 'category_browsed', etc.
-    metadata TEXT,                    -- JSON string with additional data
+    action TEXT NOT NULL,                   -- 'download_started', 'download_completed', etc.
+    metadata TEXT,                          -- JSON string with additional data
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -89,13 +100,19 @@ CREATE TABLE activity_log (
 
 ```sql
 -- Performance indexes
-CREATE INDEX idx_media_user ON media(user_id);
 CREATE INDEX idx_media_category ON media(category);
-CREATE INDEX idx_media_status ON media(download_status);
-CREATE INDEX idx_media_chat ON media(chat_id);
-CREATE INDEX idx_downloads_chat ON downloads(chat_id);
+CREATE INDEX idx_media_favorite ON media(is_favorite);
+CREATE INDEX idx_media_date ON media(download_date DESC);
 CREATE INDEX idx_downloads_status ON downloads(status);
-CREATE INDEX idx_activity_user ON activity_log(user_id, created_at);
+CREATE INDEX idx_downloads_chat ON downloads(chat_id);
+CREATE INDEX idx_activity_user ON activity_log(user_id, created_at DESC);
+
+-- Full-text search for media titles
+CREATE VIRTUAL TABLE media_fts USING fts5(
+    title, file_name, category,
+    content='media',
+    content_rowid='id'
+);
 ```
 
 ## Initial Data Seeding
@@ -107,6 +124,8 @@ INSERT INTO categories (name, description, display_order, icon) VALUES
 ('tv', 'TV shows, series, and episodes', 2, '📺'),
 ('porn', 'Adult content', 3, '🔞'),
 ('custom', 'Uncategorized or custom downloads', 4, '📁');
+
+-- Owner will be set during setup wizard (no default)
 ```
 
 ## Database Module (`database.py`)
@@ -122,11 +141,11 @@ import json
 
 class DatabaseManager:
     """Main database interface for smart downloader."""
-    
+
     def __init__(self, db_path: str = 'smart_downloader.db'):
         self.db_path = db_path
         self._initialize()
-    
+
     @contextmanager
     def get_connection(self):
         """Context manager for safe connection handling."""
@@ -136,256 +155,296 @@ class DatabaseManager:
             yield conn
         finally:
             conn.close()
-    
+
     def _initialize(self):
         """Create tables and indexes if they don't exist."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            
-            # Create tables
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS media (...)
-            """)  # (full schema from above)
-            
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS categories (...)
-            """)
-            
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS downloads (...)
-            """)
-            
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS chat_sessions (...)
-            """)
-            
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS user_preferences (...)
-            """)
-            
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS activity_log (...)
-            """)
-            
+
+            # Create all tables
+            for table_sql in [
+                self._sql_media(),
+                self._sql_downloads(),
+                self._sql_categories(),
+                self._sql_owner(),
+                self._sql_preferences(),
+                self._sql_activity_log()
+            ]:
+                cursor.execute(table_sql)
+
             # Create indexes
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_media_user ON media(user_id)")
-            # ... (other indexes)
-            
+            for index_sql in self._sql_indexes():
+                cursor.execute(index_sql)
+
+            # Create FTS table
+            cursor.execute(self._sql_fts())
+
             conn.commit()
-            
-            # Seed default categories if empty
+
+            # Seed categories if empty
             cursor.execute("SELECT COUNT(*) FROM categories")
             if cursor.fetchone()[0] == 0:
                 self._seed_categories(cursor)
                 conn.commit()
-    
-    def _seed_categories(self, cursor):
-        """Insert default categories."""
-        categories = [
-            ('movie', 'Full-length movies and films', 1, '📽'),
-            ('tv', 'TV shows, series, and episodes', 2, '📺'),
-            ('porn', 'Adult content', 3, '🔞'),
-            ('custom', 'Uncategorized or custom downloads', 4, '📁'),
-        ]
-        
-        cursor.executemany("""
-            INSERT INTO categories (name, description, display_order, icon) VALUES (?, ?, ?, ?)
-        """, categories)
-    
-    # === Media Operations ===
-    
-    def add_media(self, title: str, category: str, source_url: str, 
-                  source_type: str, user_id: int, chat_id: int,
-                  file_id: Optional[str] = None) -> int:
-        """Add new media entry."""
+
+    # === Owner Management (Single-User) ===
+
+    def is_locked(self) -> bool:
+        """Check if bot is already locked to an owner."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT chat_id FROM owner")
+            return cursor.fetchone() is not None
+
+    def set_owner(self, chat_id: int, user_id: int, username: str = None) -> bool:
+        """Lock bot to an owner (one-time setup)."""
+        if self.is_locked():
+            raise ValueError("Bot is already locked to an owner")
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO media (title, category, source_url, source_type, 
-                                user_id, chat_id, file_id, download_status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-            """, (title, category, source_url, source_type, user_id, chat_id, file_id))
-            
+                INSERT INTO owner (id, chat_id, user_id, username)
+                VALUES (1, ?, ?, ?)
+            """, (chat_id, user_id, username))
+
+            # Also create default preferences
+            cursor.execute("""
+                INSERT INTO preferences (chat_id)
+                VALUES (?)
+            """, (chat_id,))
+
+            conn.commit()
+            return True
+
+    def get_owner(self) -> Optional[Dict]:
+        """Get owner information."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM owner")
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def is_authorized(self, chat_id: int) -> bool:
+        """Check if chat_id is the owner."""
+        owner = self.get_owner()
+        return owner and owner['chat_id'] == chat_id
+
+    # === Queue Operations ===
+
+    def add_to_queue(self, url: str, source: str, title: str = None,
+                     file_size: int = None, chat_id: int = None,
+                     message_id: int = None) -> int:
+        """Add download to queue."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO downloads (url, source, title, file_size, chat_id, message_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (url, source, title, file_size, chat_id, message_id))
+
+            queue_id = cursor.lastrowid
+            conn.commit()
+            return queue_id
+
+    def get_next_pending(self) -> Optional[Dict]:
+        """Get next pending download (FIFO)."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM downloads
+                WHERE status = 'pending'
+                ORDER BY added_date ASC
+                LIMIT 1
+            """)
+
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def update_download_status(self, download_id: int, status: str,
+                               error_message: str = None):
+        """Update download status."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE downloads
+                SET status = ?, error_message = ?, updated_at = ?
+                WHERE id = ?
+            """, (status, error_message, datetime.now().isoformat(), download_id))
+            conn.commit()
+
+    def update_progress(self, download_id: int, progress: int,
+                       download_speed: float = None, upload_speed: float = None,
+                       eta_seconds: int = None):
+        """Update download/upload progress."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE downloads
+                SET progress = ?,
+                    download_speed = COALESCE(?, download_speed),
+                    upload_speed = COALESCE(?, upload_speed),
+                    eta_seconds = COALESCE(?, eta_seconds),
+                    updated_at = ?
+                WHERE id = ?
+            """, (progress, download_speed, upload_speed, eta_seconds,
+                  datetime.now().isoformat(), download_id))
+            conn.commit()
+
+    def increment_retry(self, download_id: int) -> int:
+        """Increment retry count, return new count."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE downloads
+                SET retry_count = retry_count + 1, updated_at = ?
+                WHERE id = ?
+            """, (datetime.now().isoformat(), download_id))
+
+            cursor.execute("SELECT retry_count FROM downloads WHERE id = ?", (download_id,))
+            return cursor.fetchone()[0]
+
+    def get_queue_summary(self) -> Dict:
+        """Get queue statistics for display."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'pending') as pending,
+                    COUNT(*) FILTER (WHERE status = 'downloading') as downloading,
+                    COUNT(*) FILTER (WHERE status = 'uploading') as uploading,
+                    COUNT(*) FILTER (WHERE status = 'failed') as failed
+                FROM downloads
+            """)
+
+            return dict(cursor.fetchone())
+
+    def get_active_download(self) -> Optional[Dict]:
+        """Get currently active download (for progress display)."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM downloads
+                WHERE status IN ('downloading', 'uploading')
+                LIMIT 1
+            """)
+
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    # === Media Operations ===
+
+    def add_media(self, title: str, category: str, source_url: str,
+                  source_type: str, file_size: int, file_id: str = None,
+                  hash: str = None) -> int:
+        """Add completed media to library."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO media (title, category, source_url, source_type,
+                                 file_size, file_id, hash)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (title, category, source_url, source_type, file_size, file_id, hash))
+
             media_id = cursor.lastrowid
+
+            # Update FTS index
+            cursor.execute("""
+                INSERT INTO media_fts (rowid, title, file_name, category)
+                VALUES (?, ?, '', ?)
+            """, (media_id, title, category))
+
             conn.commit()
             return media_id
-    
+
     def update_media_file_id(self, media_id: int, file_id: str):
         """Update with Telegram file_id after upload."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                UPDATE media 
-                SET file_id = ?, 
-                    download_status = 'completed',
-                    uploaded_at = datetime.now().isoformat(),
-                    updated_at = datetime.now().isoformat()
+                UPDATE media
+                SET file_id = ?, updated_at = ?
                 WHERE id = ?
-            """, (file_id, media_id))
+            """, (file_id, datetime.now().isoformat(), media_id))
             conn.commit()
-    
-    def update_media_status(self, media_id: int, status: str):
-        """Update download status."""
+
+    def toggle_favorite(self, media_id: int) -> bool:
+        """Toggle favorite status."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                UPDATE media 
-                SET download_status = ?, updated_at = ?
-                WHERE id = ?
-            """, (status, datetime.now().isoformat(), media_id))
-            conn.commit()
-    
-    def get_media_by_category(self, category: str, user_id: int, 
-                            chat_id: int) -> List[Dict]:
-        """Get all media in a category for user."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, title, file_id, file_size, duration, 
-                       category, source_url, source_type, 
-                       download_status, uploaded_at, created_at
-                FROM media 
-                WHERE category = ? AND user_id = ? AND chat_id = ?
-                ORDER BY created_at DESC
-            """, (category, user_id, chat_id))
-            
-            return [dict(row) for row in cursor.fetchall()]
-    
-    def get_user_library(self, user_id: int, chat_id: int) -> Dict[str, List[Dict]]:
-        """Get all media organized by category."""
-        categories = self.get_all_categories()
-        library = {}
-        
-        for cat in categories:
-            library[cat['name']] = self.get_media_by_category(
-                cat['name'], user_id, chat_id)
-        
-        return library
-    
-    # === Download Operations ===
-    
-    def add_download(self, gid: str, source_url: str, source_type: str,
-                  chat_id: int, message_id: int, 
-                  media_id: Optional[int] = None) -> None:
-        """Add new download to queue."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO downloads (gid, source_url, source_type, 
-                                  chat_id, message_id, media_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (gid, source_url, source_type, chat_id, message_id, media_id))
-            conn.commit()
-    
-    def update_download_progress(self, gid: str, progress: int, 
-                              downloaded: int, speed: int, eta: int):
-        """Update download progress."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE downloads 
-                SET progress = ?, downloaded = ?, 
-                    download_speed = ?, eta_seconds = ?,
-                    updated_at = ?
-                WHERE gid = ?
-            """, (progress, downloaded, speed, eta, datetime.now().isoformat(), gid))
-            conn.commit()
-    
-    def complete_download(self, gid: str, total_size: int, media_id: int):
-        """Mark download as complete and link to media."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE downloads 
-                SET status = 'completed', total_size = ?, 
-                    media_id = ?, updated_at = ?
-                WHERE gid = ?
-            """, (total_size, media_id, datetime.now().isoformat(), gid))
-            
-            # Update media status too
-            cursor.execute("""
-                UPDATE media 
-                SET download_status = 'completed', updated_at = ?
+                UPDATE media
+                SET is_favorite = NOT is_favorite, updated_at = ?
                 WHERE id = ?
             """, (datetime.now().isoformat(), media_id))
-            
+
+            cursor.execute("SELECT is_favorite FROM media WHERE id = ?", (media_id,))
+            result = cursor.fetchone()
             conn.commit()
-    
-    def get_active_downloads(self, chat_id: int) -> List[Dict]:
-        """Get all active downloads for a chat."""
+            return bool(result[0]) if result else False
+
+    def get_favorites(self) -> List[Dict]:
+        """Get all favorited media."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT gid, status, progress, download_speed, 
-                       total_size, downloaded, eta_seconds, source_url
-                FROM downloads 
-                WHERE chat_id = ? AND status IN ('active', 'pending')
-                ORDER BY started_at DESC
-            """, (chat_id,))
-            
+                SELECT * FROM media
+                WHERE is_favorite = 1
+                ORDER BY created_at DESC
+            """)
+
             return [dict(row) for row in cursor.fetchall()]
-    
+
+    def search_media(self, query: str) -> List[Dict]:
+        """Full-text search in media titles."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT m.* FROM media m
+                INNER JOIN media_fts fts ON m.id = fts.rowid
+                WHERE media_fts MATCH ?
+                ORDER BY m.created_at DESC
+            """, (query,))
+
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_media_by_category(self, category: str) -> List[Dict]:
+        """Get all media in a category."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM media
+                WHERE category = ?
+                ORDER BY created_at DESC
+            """, (category,))
+
+            return [dict(row) for row in cursor.fetchall()]
+
+    def check_duplicate(self, hash: str) -> bool:
+        """Check if file with this hash already exists."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM media WHERE hash = ? LIMIT 1", (hash,))
+            return cursor.fetchone() is not None
+
     # === Category Operations ===
-    
+
     def get_all_categories(self) -> List[Dict]:
         """Get all categories."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, name, description, display_order, icon
-                FROM categories
+                SELECT * FROM categories
                 ORDER BY display_order ASC
             """)
-            
+
             return [dict(row) for row in cursor.fetchall()]
-    
-    def get_category(self, name: str) -> Optional[Dict]:
-        """Get category by name."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT * FROM categories WHERE name = ?
-            """, (name,))
-            
-            row = cursor.fetchone()
-            return dict(row) if row else None
-    
-    # === Chat Session Operations ===
-    
-    def update_chat_activity(self, chat_id: int):
-        """Update last activity timestamp."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO chat_sessions (chat_id, last_activity, message_count)
-                VALUES (?, ?, 1)
-                ON CONFLICT(chat_id) DO UPDATE SET 
-                    last_activity = ?, message_count = message_count + 1
-            """, (chat_id, datetime.now().isoformat(), datetime.now().isoformat()))
-            
-            conn.commit()
-    
-    def get_chats_to_clear(self, hours: int) -> List[int]:
-        """Get chats that need auto-clear."""
-        threshold = (datetime.now() - timedelta(hours=hours)).isoformat()
-        
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT chat_id FROM chat_sessions
-                WHERE auto_clear_enabled = 1 
-                  AND auto_clear_hours = ?
-                  AND datetime(last_activity, '+{hours} hours') < datetime('now')
-            """, (hours,))
-            
-            return [row['chat_id'] for row in cursor.fetchall()]
-    
+
     # === Logging ===
-    
-    def log_activity(self, user_id: int, chat_id: int, 
-                   action: str, metadata: Optional[Dict] = None):
-        """Log user activity."""
+
+    def log_activity(self, user_id: int, chat_id: int,
+                    action: str, metadata: Optional[Dict] = None):
+        """Log activity for debugging."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -393,28 +452,39 @@ class DatabaseManager:
                 VALUES (?, ?, ?, ?)
             """, (user_id, chat_id, action, json.dumps(metadata) if metadata else None))
             conn.commit()
+
+    # === SQL Statements (Private) ===
+
+    def _sql_media(self):
+        return """CREATE TABLE IF NOT EXISTS media (...)"""
+
+    # ... (other SQL methods)
 ```
 
 ## Implementation Tasks
 
 - [ ] Create `database.py` with DatabaseManager class
-- [ ] Implement all table schemas
+- [ ] Implement all table schemas (single-user, queue, favorites)
 - [ ] Add indexes for performance
+- [ ] Add full-text search for media titles
 - [ ] Seed default categories
 - [ ] Write unit tests for CRUD operations
-- [ ] Test concurrent access safety
+- [ ] Test owner lock functionality
+- [ ] Test queue FIFO ordering
 - [ ] Add migration support (future version upgrades)
 
 ## Dependencies
 
 ```python
 # requirements.txt
-sqlite3  # Built-in, but document version requirements
+# sqlite3 is built-in, no additional dependencies needed
 ```
 
 ## Notes
 
-- **Single-file database:** Keeps it simple for now
-- **Connection pooling:** Using context managers for thread safety
-- **Timestamps:** ISO format strings (easier to work with)
-- **Future scaling:** Can migrate to PostgreSQL if needed
+- **Single-file database:** Keeps it simple for personal use
+- **Owner lock:** One-time setup, cannot be changed
+- **Queue system:** FIFO ordering, one-at-a-time processing
+- **Favorites:** Simple boolean flag for Watch Later
+- **Full-text search:** Fast title search via FTS5
+- **Duplicate detection:** Hash-based comparison
