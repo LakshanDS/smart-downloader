@@ -1,11 +1,14 @@
-# Smart Downloader - Phase 1 Requirements
+# Smart Downloader - Requirements
 
 # Phase 1: Database & Foundation
-# sqlite3 is built-in, no additional dependencies needed for this phase
+# sqlite3 is built-in, no additional dependencies needed
+
+# Phase 2: Core Bot Framework
+python-telegram-bot>=21.0
+python-dotenv>=1.0.0
 
 # Future phases will add:
-# python-telegram-bot>=21.0  # Phase 2: Core Bot Framework
-# telethon>=1.34.0          # Phase 5: Userbot Uploader
+# telethon>=1.34.0          # Phase 7: Userbot Uploader
 # yt-dlp>=2023.12.0         # Phase 5: Direct Download Handler
 # playwright>=1.40.0        # Phase 6: Playwright Crawler
 # aria2p>=0.11.0           # Phase 4: Torrent Handler

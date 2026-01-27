@@ -47,12 +47,3 @@ smart_downloader.db
 # Downloads
 downloads/
 temp/
-
-# Windows reserved device names
-nul
-CON
-PRN
-AUX
-NUL
-COM[1-9]
-LPT[1-9]
