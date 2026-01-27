@@ -38,10 +38,13 @@
 ### Known Issues
 | Severity | Issue | Status |
 |----------|-------|--------|
-| **High** | Missing `mark_completed()` in DatabaseManager | 🔴 Open |
 | **Medium** | No unit tests for bot module | 🟡 Open |
-| **Low** | yt-dlp domain check too limited | 🟡 Open |
-| **Low** | No URL validation in /download | 🟡 Open |
+| **Low** | No rate limiting | 🟡 Open |
+
+### Bugs Fixed ✅
+- BUG-001: Added `mark_completed()` to queue_manager.py
+- BUG-002: Removed yt-dlp domain whitelist (now supports 1000+ sites)
+- BUG-003: Added URL validation (length + format)
 
 ### Code Quality
 - **Lines of Code**: ~510 (bot + config + queue placeholder)
@@ -137,11 +140,13 @@ results = db.search_media("Movie")
 
 ## Bug Tracker
 
-| ID | Severity | Description | Phase |
-|----|----------|-------------|-------|
-| BUG-001 | **High** | `mark_completed()` missing from DatabaseManager | Phase 2 |
-| BUG-002 | **Low** | yt-dlp domain check only supports 4 sites | Phase 2 |
-| BUG-003 | **Low** | No URL validation in /download command | Phase 2 |
+| ID | Severity | Description | Status |
+|----|----------|-------------|--------|
+| BUG-001 | **High** | `mark_completed()` missing from DatabaseManager | ✅ Fixed |
+| BUG-002 | **Low** | yt-dlp domain check only supports 4 sites | ✅ Fixed |
+| BUG-003 | **Low** | No URL validation in /download command | ✅ Fixed |
+
+See `progress/BUGS.md` for details.
 
 ---
 

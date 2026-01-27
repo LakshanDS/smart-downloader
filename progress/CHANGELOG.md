@@ -22,9 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Logging**: Structured logging with configurable levels
 - **Modular Design**: Separate config.py for environment variables
 - **Markdown Messages**: Formatted messages with emoji and progress bars
+- **yt-dlp Support**: Now supports all 1000+ yt-dlp sites (removed domain whitelist)
 
 ### Fixes
-- No fixes yet
+- **BUG-001**: Added `mark_completed()` method to QueueManager
+- **BUG-002**: Removed yt-dlp domain whitelist, now supports all HTTP/HTTPS URLs
+- **BUG-003**: Added URL validation (length limit 2048, format checking)
 
 ### Breaking Changes
 - No breaking changes
@@ -37,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Issues
 - QueueManager is placeholder (full implementation in Phase 3)
 - No unit tests for bot module (manual testing required)
-- Missing `mark_completed()` method in DatabaseManager (called by queue_manager.py)
 
 ---
 

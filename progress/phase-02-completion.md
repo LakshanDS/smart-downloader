@@ -46,22 +46,25 @@
 | Severity | Count | Issues |
 |----------|-------|--------|
 | **Blocker** | 0 | None |
-| **High** | 1 | Missing `mark_completed()` method in DatabaseManager |
+| **High** | 0 | None (all fixed) |
 | **Medium** | 2 | No unit tests for bot module, QueueManager placeholder warning |
-| **Low** | 3 | Hardcoded yt-dlp domains, no rate limiting, missing input validation |
+| **Low** | 1 | No rate limiting |
 
-### Issues Found
+### Issues Fixed ✅
 
-#### **HIGH: Missing Database Method**
-```python
-# queue_manager.py line 107 calls:
-self.db.mark_completed(download_id=download_id)
+#### **HIGH: Missing Database Method** ✅ FIXED
+- Added `mark_completed()` method to `queue_manager.py`
+- Now wraps `db.update_download_status(download_id, 'completed')`
 
-# But database.py has no such method.
-# Should be: self.db.update_download_status(download_id, 'completed')
-```
-**Impact**: QueueManager will crash on completion
-**Fix**: Add method to database.py or fix queue_manager.py call
+#### **LOW: Hardcoded yt-dlp Domains** ✅ FIXED
+- Removed domain whitelist
+- Now lets yt-dlp handle all HTTP/HTTPS URLs (1000+ sites)
+
+#### **LOW: Missing Input Validation** ✅ FIXED
+- Added URL length validation (max 2048 characters)
+- Added URL format validation (scheme + netloc required)
+
+### Remaining Issues
 
 #### **MEDIUM: No Unit Tests**
 - Bot module has no test coverage
@@ -73,23 +76,9 @@ self.db.mark_completed(download_id=download_id)
 - May confuse developers about implementation status
 - **Recommendation**: Add prominent TODO comment at top of file
 
-#### **LOW: Hardcoded yt-dlp Domains**
-```python
-# bot.py lines 264-269
-supported_domains = [
-    'youtube.com', 'youtu.be',
-    'vimeo.com',
-    'dailymotion.com',
-    # Add more as needed
-]
-```
-**Impact**: yt-dlp supports 1000+ sites, this only checks 4
-**Fix**: Remove check and let yt-dlp handle everything
-
-#### **LOW: Missing Input Validation**
-- `/download` accepts any URL without validation
-- No length limits on URLs
-- **Recommendation**: Add URL length and format validation
+#### **LOW: No Rate Limiting**
+- No rate limiting per user
+- Not critical for single-user personal bot
 
 ---
 
@@ -183,21 +172,21 @@ python src/bot.py
 
 ## Bug Report
 
-### Bugs Found
+### Bugs Fixed ✅
 
 | ID | Severity | Description | Status |
 |----|----------|-------------|--------|
-| BUG-001 | **High** | `mark_completed()` method missing from DatabaseManager | 🔴 Open |
-| BUG-002 | **Low** | yt-dlp domain check too limited (only 4 sites) | 🟡 Open |
-| BUG-003 | **Low** | No URL validation in /download command | 🟡 Open |
+| BUG-001 | **High** | `mark_completed()` method missing | ✅ Fixed |
+| BUG-002 | **Low** | yt-dlp domain check too limited | ✅ Fixed |
+| BUG-003 | **Low** | No URL validation in /download | ✅ Fixed |
 
 ### TODO List
 
-- [ ] **[HIGH]** Fix BUG-001: Add `mark_completed()` to database.py
+- [x] **[HIGH]** Fix BUG-001: Add `mark_completed()` to queue_manager.py ✅
+- [x] **[LOW]** Remove yt-dlp domain check (let yt-dlp handle) ✅
+- [x] **[LOW]** Add URL validation (length, format) ✅
 - [ ] **[MEDIUM]** Add unit tests for bot module
 - [ ] **[MEDIUM]** Update QueueManager placeholder with clear TODO
-- [ ] **[LOW]** Remove yt-dlp domain check (let yt-dlp handle)
-- [ ] **[LOW]** Add URL validation (length, format)
 - [ ] **[LOW]** Add rate limiting per user
 
 ---
