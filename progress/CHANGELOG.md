@@ -5,6 +5,42 @@ All notable changes to Smart Downloader will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-01-27
+
+### Features
+- **Telegram Bot Integration**: Full bot framework with python-telegram-bot
+- **Setup Wizard**: One-time `/setup` command locks bot to your account
+- **Owner Authorization**: All commands protected with owner lock checks
+- **Command Routing**: `/start`, `/help`, `/status`, `/download`, `/torrent` implemented
+- **Source Detection**: Auto-detects torrent, direct (yt-dlp), and crawler links
+- **Queue Placeholder**: QueueManager stub for Phase 3 compatibility
+- **Error Handling**: Global error handler with user-friendly messages
+- **Environment Configuration**: dotenv support for secure credential management
+
+### Improvements
+- **Type Safety**: Custom exception classes (BotError, NotAuthorizedError, InvalidURLError, FileTooLargeError)
+- **Logging**: Structured logging with configurable levels
+- **Modular Design**: Separate config.py for environment variables
+- **Markdown Messages**: Formatted messages with emoji and progress bars
+
+### Fixes
+- No fixes yet
+
+### Breaking Changes
+- No breaking changes
+
+### Security
+- Owner lock enforced on all commands
+- Non-owners receive rejection message
+- Bot token required via environment variable
+
+### Known Issues
+- QueueManager is placeholder (full implementation in Phase 3)
+- No unit tests for bot module (manual testing required)
+- Missing `mark_completed()` method in DatabaseManager (called by queue_manager.py)
+
+---
+
 ## [0.1.0] - 2026-01-27
 
 ### Features

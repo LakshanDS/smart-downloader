@@ -1,18 +1,18 @@
 # Smart Downloader - Project Status
 
 **Last Updated**: 2026-01-27
-**Current Phase**: Phase 1 (Completed)
-**Next Phase**: Phase 2 (Core Bot Framework)
+**Current Phase**: Phase 2 (Completed)
+**Next Phase**: Phase 3 (Queue Manager)
 
 ---
 
-## Overall Progress: 10% (1/10 phases)
+## Overall Progress: 20% (2/10 phases)
 
 | Phase | Status | Completion |
 |-------|--------|------------|
 | Phase 1: Database & Foundation | ✅ Complete | 100% |
-| Phase 2: Core Bot Framework | 🔲 Pending | 0% |
-| Phase 3: Queue Manager | 🔲 Pending | 0% |
+| Phase 2: Core Bot Framework | ✅ Complete | 100% |
+| Phase 3: Queue Manager | 🔲 Pending | 0% (placeholder only) |
 | Phase 4: Torrent Handler | 🔲 Pending | 0% |
 | Phase 5: Direct Download Handler | 🔲 Pending | 0% |
 | Phase 6: Playwright Crawler | 🔲 Pending | 0% |
@@ -23,46 +23,71 @@
 
 ---
 
-## Phase 1 Summary
+## Phase 2 Summary
 
 ### What's Working
-- ✅ Database initialization with all tables
-- ✅ Owner lock system (single-user security)
-- ✅ Download queue (FIFO ordering)
-- ✅ Progress tracking (speed, ETA, retry count)
-- ✅ Media library with full-text search
-- ✅ Favorites/Watch Later functionality
-- ✅ Category system (pre-seeded: movie, tv, porn, custom)
-- ✅ Activity logging
-- ✅ All 6 tests passing
+- ✅ Telegram bot integration (python-telegram-bot)
+- ✅ Setup wizard with owner lock
+- ✅ All core commands: /start, /setup, /help, /status, /download, /torrent
+- ✅ Owner authorization on all protected commands
+- ✅ Source type detection (torrent, direct, crawler)
+- ✅ Error handling with user-friendly messages
+- ✅ Environment configuration (dotenv)
+- ✅ Queue manager placeholder (Phase 3 ready)
 
-### Known Issues (Non-blocking)
-- No migration system (manual DB delete for schema changes)
-- WAL mode not enabled (concurrent read/write performance)
-- Missing logging for debugging
+### Known Issues
+| Severity | Issue | Status |
+|----------|-------|--------|
+| **High** | Missing `mark_completed()` in DatabaseManager | 🔴 Open |
+| **Medium** | No unit tests for bot module | 🟡 Open |
+| **Low** | yt-dlp domain check too limited | 🟡 Open |
+| **Low** | No URL validation in /download | 🟡 Open |
 
 ### Code Quality
-- **Lines of Code**: ~460 (database module)
-- **Test Coverage**: 6 test suites, all passing
+- **Lines of Code**: ~510 (bot + config + queue placeholder)
+- **Test Coverage**: 0% (manual testing required)
 - **Type Hints**: Full coverage
-- **Documentation**: Docstrings on all public methods
-- **External Dependencies**: 0 (stdlib only)
+- **Documentation**: Docstrings on all functions
+- **External Dependencies**: 2 (python-telegram-bot, python-dotenv)
 
 ---
 
 ## Quick Start
 
-### Running Tests
+### Setup (First Time)
 ```bash
-# Using venv
-.venv\Scripts\activate
-python tests/test_database.py
+# 1. Install dependencies
+pip install -r requirements.txt
 
-# Direct
-python -X utf8 tests/test_database.py
+# 2. Create .env file
+cat > .env << EOF
+TELEGRAM_BOT_TOKEN=your_token_from_botfather
+DATABASE_PATH=smart_downloader.db
+LOG_LEVEL=INFO
+EOF
+
+# 3. Run bot
+python src/bot.py
+
+# 4. In Telegram:
+#    /start → Welcome message
+#    /setup → Lock to your account
 ```
 
-### Database Module Usage
+### Usage
+```
+/start          - Welcome message
+/setup          - Lock bot to your account (one-time)
+/help           - Command reference
+/status         - Active downloads
+/download <url> - Queue direct link download
+/torrent <magnet> - Queue torrent download
+```
+
+---
+
+## Database Module Usage
+
 ```python
 from src.database import DatabaseManager
 
@@ -95,17 +120,28 @@ results = db.search_media("Movie")
 
 ## Next Steps
 
-### Immediate (Phase 2)
-1. Create bot skeleton with python-telegram-bot
-2. Implement setup wizard (/setup command)
-3. Add owner lock enforcement
-4. Command routing for /start, /download, /torrent, /status
+### Immediate (Phase 3)
+1. Implement QueueManager processing loop
+2. Add progress message updates (5s intervals)
+3. Implement exponential backoff retry
+4. Add file size validation (<2GB)
+5. Create download handler routing
 
-### Before Phase 2
-- [ ] Add migration system to database module
-- [ ] Fix FTS delete sync (transaction or CASCADE)
-- [ ] Enable WAL mode
-- [ ] Add logging throughout
+### Before Phase 3
+- [ ] Fix BUG-001: Add `mark_completed()` to database.py
+- [ ] Add unit tests for bot module
+- [ ] Fix BUG-002: Remove yt-dlp domain check
+- [ ] Add URL validation
+
+---
+
+## Bug Tracker
+
+| ID | Severity | Description | Phase |
+|----|----------|-------------|-------|
+| BUG-001 | **High** | `mark_completed()` missing from DatabaseManager | Phase 2 |
+| BUG-002 | **Low** | yt-dlp domain check only supports 4 sites | Phase 2 |
+| BUG-003 | **Low** | No URL validation in /download command | Phase 2 |
 
 ---
 
@@ -115,42 +151,79 @@ results = db.search_media("Movie")
 smart-downloader/
 ├── src/
 │   ├── __init__.py          # Package marker
-│   └── database.py           # ✅ Complete (604 lines)
+│   ├── database.py           # ✅ Phase 1 (604 lines)
+│   ├── bot.py               # ✅ Phase 2 (465 lines)
+│   ├── config.py            # ✅ Phase 2 (32 lines)
+│   └── queue_manager.py     # 🔄 Phase 3 placeholder (118 lines)
 ├── tests/
 │   ├── __init__.py           # Test package marker
-│   └── test_database.py      # ✅ Complete (320 lines)
+│   └── test_database.py      # ✅ Phase 1 (320 lines)
 ├── doc/
 │   ├── main-plan.md          # Project overview
 │   ├── phase-01-database.md  # Phase 1 spec
+│   ├── phase-02-core-bot.md  # Phase 2 spec
 │   └── phase-*.md            # Other phase specs
 ├── progress/
-│   ├── CHANGELOG.md          # ✅ Changelog
+│   ├── CHANGELOG.md          # ✅ Changelog (v0.2.0)
 │   ├── phase-01-completion.md # ✅ Phase 1 report
+│   ├── phase-02-completion.md # ✅ Phase 2 report
+│   ├── BUGS.md              # ✅ Bug tracker
 │   └── PROJECT_STATUS.md     # This file
 ├── .venv/                    # Virtual environment
-└── requirements.txt          # Dependencies (empty for Phase 1)
+└── requirements.txt          # Dependencies
 ```
 
 ---
 
 ## Dependencies
 
-**Current**: None (stdlib only)
-**Planned for Phase 2**:
-- `python-telegram-bot>=21.0`
-- `python-dotenv>=1.0.0`
+### Current (Phase 2)
+```txt
+python-telegram-bot>=21.0
+python-dotenv>=1.0.0
+```
+
+### Planned (Future Phases)
+```txt
+# Phase 4
+aria2p>=0.11.0
+
+# Phase 5
+yt-dlp>=2023.12.0
+
+# Phase 6
+playwright>=1.40.0
+
+# Phase 7
+telethon>=1.34.0
+
+# Phase 9
+aiohttp>=3.8.0
+```
 
 ---
 
-## Environment Variables Needed (Future)
+## Environment Variables
 
 ```bash
-# Phase 2+
+# Required (Phase 2+)
 TELEGRAM_BOT_TOKEN=from_botfather
-DATABASE_PATH=smart_downloader.db
 
-# Phase 7+
+# Optional
+DATABASE_PATH=smart_downloader.db
+LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR
+
+# Future (Phase 7+)
 UPLOADER_API_ID=from_my_telegram
 UPLOADER_API_HASH=from_my_telegram
 UPLOADER_PHONE=+9477xxxxxxx
 ```
+
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 0.2.0 | 2026-01-27 | Phase 2: Core Bot Framework |
+| 0.1.0 | 2026-01-27 | Phase 1: Database & Foundation |
