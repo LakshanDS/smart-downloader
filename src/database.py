@@ -3,6 +3,8 @@ Database Module - Smart Downloader
 
 Phase 1: Database Design & Foundation
 Implements SQLite database with owner lock, queue management, and media library.
+
+Updated: User-created categories with many-to-many relationship (Phase 8)
 """
 
 import sqlite3
@@ -39,6 +41,7 @@ class DatabaseManager:
                 self._sql_media(),
                 self._sql_downloads(),
                 self._sql_categories(),
+                self._sql_media_categories(),
                 self._sql_owner(),
                 self._sql_preferences(),
                 self._sql_activity_log()
@@ -175,7 +178,9 @@ class DatabaseManager:
             """, (datetime.now().isoformat(), download_id))
 
             cursor.execute("SELECT retry_count FROM downloads WHERE id = ?", (download_id,))
-            return cursor.fetchone()[0]
+            result = cursor.fetchone()[0]
+            conn.commit()
+            return result
 
     def get_queue_summary(self) -> Dict:
         """Get queue statistics for display."""
@@ -244,25 +249,32 @@ class DatabaseManager:
 
     # === Media Operations ===
 
-    def add_media(self, title: str, category: str, source_url: str,
-                  source_type: str, file_size: int, file_id: str = None,
-                  hash: str = None) -> int:
+    def add_media(self, title: str, source_url: str, source_type: str,
+                  file_size: int, file_id: str = None, hash: str = None,
+                  category_ids: List[int] = None) -> int:
         """Add completed media to library."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO media (title, category, source_url, source_type,
-                                 file_size, file_id, hash)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, source_url, source_type, file_size, file_id, hash))
+                INSERT INTO media (title, source_url, source_type, file_size, file_id, hash)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (title, source_url, source_type, file_size, file_id, hash))
 
             media_id = cursor.lastrowid
 
             # Update FTS index
             cursor.execute("""
-                INSERT INTO media_fts (rowid, title, file_name, category)
-                VALUES (?, ?, '', ?)
-            """, (media_id, title, category))
+                INSERT INTO media_fts (rowid, title, file_name)
+                VALUES (?, ?, '')
+            """, (media_id, title))
+
+            # Add to categories if provided
+            if category_ids:
+                for cat_id in category_ids:
+                    cursor.execute("""
+                        INSERT INTO media_categories (media_id, category_id)
+                        VALUES (?, ?)
+                    """, (media_id, cat_id))
 
             conn.commit()
             return media_id
@@ -318,15 +330,16 @@ class DatabaseManager:
 
             return [dict(row) for row in cursor.fetchall()]
 
-    def get_media_by_category(self, category: str) -> List[Dict]:
-        """Get all media in a category."""
+    def get_media_by_category(self, category_id: int) -> List[Dict]:
+        """Get all media in a category (many-to-many)."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT * FROM media
-                WHERE category = ?
-                ORDER BY created_at DESC
-            """, (category,))
+                SELECT m.* FROM media m
+                INNER JOIN media_categories mc ON m.id = mc.media_id
+                WHERE mc.category_id = ?
+                ORDER BY m.created_at DESC
+            """, (category_id,))
 
             return [dict(row) for row in cursor.fetchall()]
 
@@ -367,7 +380,34 @@ class DatabaseManager:
             conn.commit()
             return deleted
 
-    # === Category Operations ===
+    # === Category Operations (User-Created with Many-to-Many) ===
+
+    def create_category(self, name: str, emoji: str = '📁') -> int:
+        """Create a new category."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO categories (name, emoji)
+                VALUES (?, ?)
+            """, (name, emoji))
+            conn.commit()
+            return cursor.lastrowid
+
+    def delete_category(self, category_id: int):
+        """Delete a category (cascades to media_categories)."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+            conn.commit()
+
+    def rename_category(self, category_id: int, new_name: str):
+        """Rename a category."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE categories SET name = ? WHERE id = ?
+            """, (new_name, category_id))
+            conn.commit()
 
     def get_all_categories(self) -> List[Dict]:
         """Get all categories."""
@@ -375,7 +415,7 @@ class DatabaseManager:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT * FROM categories
-                ORDER BY display_order ASC
+                ORDER BY created_at ASC
             """)
 
             return [dict(row) for row in cursor.fetchall()]
@@ -388,19 +428,38 @@ class DatabaseManager:
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def add_category(self, name: str, description: str = None,
-                    display_order: int = 0, icon: str = None) -> int:
-        """Add a new category."""
+    def add_media_to_category(self, media_id: int, category_id: int):
+        """Add media to a category."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO categories (name, description, display_order, icon)
-                VALUES (?, ?, ?, ?)
-            """, (name, description, display_order, icon))
-
-            category_id = cursor.lastrowid
+                INSERT OR IGNORE INTO media_categories (media_id, category_id)
+                VALUES (?, ?)
+            """, (media_id, category_id))
             conn.commit()
-            return category_id
+
+    def remove_media_from_category(self, media_id: int, category_id: int):
+        """Remove media from a category."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM media_categories
+                WHERE media_id = ? AND category_id = ?
+            """, (media_id, category_id))
+            conn.commit()
+
+    def get_media_categories(self, media_id: int) -> List[Dict]:
+        """Get all categories for a media item."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT c.* FROM categories c
+                INNER JOIN media_categories mc ON c.id = mc.category_id
+                WHERE mc.media_id = ?
+                ORDER BY c.name ASC
+            """, (media_id,))
+
+            return [dict(row) for row in cursor.fetchall()]
 
     # === Logging ===
 
@@ -480,7 +539,6 @@ class DatabaseManager:
                 file_name TEXT,
                 file_size INTEGER,
                 duration INTEGER,
-                category TEXT NOT NULL,
                 source_url TEXT,
                 source_type TEXT,
                 download_date DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -516,15 +574,26 @@ class DatabaseManager:
         """
 
     def _sql_categories(self):
-        """Categories table schema."""
+        """Categories table schema (user-created)."""
         return """
             CREATE TABLE IF NOT EXISTS categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
-                description TEXT,
-                display_order INTEGER DEFAULT 0,
-                icon TEXT,
+                emoji TEXT DEFAULT '📁',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """
+
+    def _sql_media_categories(self):
+        """Media-Categories junction table (many-to-many)."""
+        return """
+            CREATE TABLE IF NOT EXISTS media_categories (
+                media_id INTEGER NOT NULL,
+                category_id INTEGER NOT NULL,
+                added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (media_id, category_id),
+                FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
             )
         """
 
@@ -545,7 +614,6 @@ class DatabaseManager:
         return """
             CREATE TABLE IF NOT EXISTS preferences (
                 chat_id INTEGER PRIMARY KEY,
-                default_category TEXT DEFAULT 'movie',
                 auto_clear_enabled BOOLEAN DEFAULT 0,
                 auto_clear_hours INTEGER DEFAULT 24,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -570,19 +638,20 @@ class DatabaseManager:
     def _sql_indexes(self):
         """Database indexes for performance."""
         return [
-            "CREATE INDEX IF NOT EXISTS idx_media_category ON media(category)",
             "CREATE INDEX IF NOT EXISTS idx_media_favorite ON media(is_favorite)",
             "CREATE INDEX IF NOT EXISTS idx_media_date ON media(download_date DESC)",
             "CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)",
             "CREATE INDEX IF NOT EXISTS idx_downloads_chat ON downloads(chat_id)",
-            "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id, created_at DESC)"
+            "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_media_categories_media ON media_categories(media_id)",
+            "CREATE INDEX IF NOT EXISTS idx_media_categories_category ON media_categories(category_id)"
         ]
 
     def _sql_fts(self):
         """Full-text search table schema."""
         return """
             CREATE VIRTUAL TABLE IF NOT EXISTS media_fts USING fts5(
-                title, file_name, category,
+                title, file_name,
                 content='media',
                 content_rowid='id'
             )
@@ -591,11 +660,10 @@ class DatabaseManager:
     def _seed_categories(self, cursor):
         """Seed default categories."""
         cursor.execute("""
-            INSERT INTO categories (name, description, display_order, icon) VALUES
-            ('movie', 'Full-length movies and films', 1, '📽'),
-            ('tv', 'TV shows, series, and episodes', 2, '📺'),
-            ('porn', 'Adult content', 3, '🔞'),
-            ('custom', 'Uncategorized or custom downloads', 4, '📁')
+            INSERT INTO categories (name, emoji) VALUES
+            ('Favorites', '❤️'),
+            ('Watch Later', '⏰'),
+            ('Music', '🎵')
         """)
 
     def close(self):
