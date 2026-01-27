@@ -103,7 +103,7 @@ class DirectHandler:
             logger.warning("Could not determine file size, proceeding anyway")
             return True
 
-        if file_size > self.MAX_FILE_SIZE:
+        if file_size >= self.MAX_FILE_SIZE:
             logger.warning(f"File too large: {file_size} bytes")
             return False
 

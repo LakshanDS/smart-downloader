@@ -47,3 +47,5 @@ smart_downloader.db
 # Downloads
 downloads/
 temp/
+nul
+.env

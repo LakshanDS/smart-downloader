@@ -8,6 +8,12 @@ Or: python tests/test_database.py
 import os
 import sys
 import sqlite3
+import io
+
+# Fix Windows encoding
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -95,10 +101,10 @@ def test_category_seeding():
     db = DatabaseManager(test_db)
 
     categories = db.get_all_categories()
-    assert len(categories) == 4, f"Expected 4 categories, got {len(categories)}"
+    assert len(categories) == 3, f"Expected 3 categories, got {len(categories)}"
 
     category_names = [cat['name'] for cat in categories]
-    expected = ['movie', 'tv', 'porn', 'custom']
+    expected = ['Favorites', 'Watch Later', 'Music']
     for name in expected:
         assert name in category_names, f"Category {name} not found"
 
@@ -188,7 +194,6 @@ def test_media_operations():
     # Add media
     media_id = db.add_media(
         title="Test Movie",
-        category="movie",
         source_url="https://example.com/movie.mp4",
         source_type="direct",
         file_size=1000000000,
@@ -202,8 +207,12 @@ def test_media_operations():
     assert media['title'] == "Test Movie"
     print("  ✓ Retrieved media by ID")
 
+    # Add to category first
+    db.add_media_to_category(media_id, 1)
+    print("  ✓ Added media to category")
+
     # Get by category
-    movies = db.get_media_by_category("movie")
+    movies = db.get_media_by_category(1)
     assert len(movies) == 1
     assert movies[0]['id'] == media_id
     print("  ✓ Retrieved media by category")

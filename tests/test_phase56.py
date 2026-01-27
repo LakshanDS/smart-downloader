@@ -15,7 +15,7 @@ import shutil
 from unittest.mock import Mock, AsyncMock
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from database import DatabaseManager
 from direct_handler import DirectHandler, DirectHTTPHandler

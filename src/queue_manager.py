@@ -96,7 +96,7 @@ class QueueManager:
             The queue ID, or -1 if file is too large
         """
         # Validate file size if provided
-        if file_size and file_size > self.MAX_FILE_SIZE:
+        if file_size and file_size >= self.MAX_FILE_SIZE:
             logger.warning(f"File too large: {file_size} bytes (limit: {self.MAX_FILE_SIZE})")
 
             # Notify user about oversized file
