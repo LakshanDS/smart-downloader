@@ -131,10 +131,15 @@ results = db.search_media("Movie")
 5. Create download handler routing
 
 ### Before Phase 3
-- [ ] Fix BUG-001: Add `mark_completed()` to database.py
 - [ ] Add unit tests for bot module
-- [ ] Fix BUG-002: Remove yt-dlp domain check
-- [ ] Add URL validation
+- [ ] Update database.py with new category schema
+
+### Architecture Change (Phase 1 & 8)
+- [x] **UPDATED**: Categories now user-created (not fixed)
+- [x] **UPDATED**: Many-to-many relationship (files in multiple categories)
+- [x] **UPDATED**: Phase 8 now includes category CRUD commands
+- [ ] Need to implement database schema changes
+- [ ] Need to update existing database.py code
 
 ---
 

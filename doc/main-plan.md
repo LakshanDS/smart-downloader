@@ -74,9 +74,11 @@ User (Private Chat Only)
 - **Progress tracking:** Real-time updates via message editing
 
 ### 2. Content Organization
-- **Categories:** Movies, TV Shows, Porn, Custom
+- **User-created categories:** Create folders like "Action Movies", "Workout Videos", etc.
+- **Many-to-many categorization:** Add files to multiple categories (like tags)
+- **Category management:** Create, rename, delete categories via commands
 - **Browse by category:** Inline keyboard navigation
-- **Local search:** Search SQLite DB by title, tags, ID (fast indexed)
+- **Local search:** Search SQLite DB by title (fast indexed)
 - **Favorites/Watch Later:** Mark items for quick access
 - **Duplicate detection:** Hash-based deduplication
 

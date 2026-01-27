@@ -10,6 +10,7 @@
 - **Retry tracking**: Exponential backoff (0s → 2min → 8min)
 - **Favorites system**: Watch Later functionality
 - **Progress tracking**: Real-time speed, ETA, upload progress
+- **Flexible categories**: User-created folders with many-to-many relationship
 
 ## Database Schema
 
@@ -24,7 +25,6 @@ CREATE TABLE media (
     file_name TEXT,
     file_size INTEGER,                      -- Bytes
     duration INTEGER,                       -- Seconds (if video/audio)
-    category TEXT NOT NULL,                 -- 'movie', 'tv', 'porn', 'custom'
     source_url TEXT,                        -- Original URL or magnet link
     source_type TEXT,                       -- 'torrent', 'direct', 'crawler'
     download_date DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -55,14 +55,22 @@ CREATE TABLE downloads (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Categories (browseable sections)
+-- Categories (user-created folders)
 CREATE TABLE categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL,
-    description TEXT,
-    display_order INTEGER DEFAULT 0,
-    icon TEXT,                              -- Emoji identifier
+    name TEXT UNIQUE NOT NULL,              -- User-defined name
+    emoji TEXT DEFAULT '📁',               -- Folder icon
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Media-Categories junction (many-to-many)
+CREATE TABLE media_categories (
+    media_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (media_id, category_id),
+    FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
 -- Owner lock (single-user only)
@@ -77,7 +85,6 @@ CREATE TABLE owner (
 -- User preferences (single row for owner)
 CREATE TABLE preferences (
     chat_id INTEGER PRIMARY KEY,            -- Owner's chat ID (foreign key)
-    default_category TEXT DEFAULT 'movie',
     auto_clear_enabled BOOLEAN DEFAULT 0,   -- Optional feature
     auto_clear_hours INTEGER DEFAULT 24,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -100,16 +107,19 @@ CREATE TABLE activity_log (
 
 ```sql
 -- Performance indexes
-CREATE INDEX idx_media_category ON media(category);
 CREATE INDEX idx_media_favorite ON media(is_favorite);
 CREATE INDEX idx_media_date ON media(download_date DESC);
 CREATE INDEX idx_downloads_status ON downloads(status);
 CREATE INDEX idx_downloads_chat ON downloads(chat_id);
 CREATE INDEX idx_activity_user ON activity_log(user_id, created_at DESC);
 
+-- Junction table indexes (for many-to-many queries)
+CREATE INDEX idx_media_categories_media ON media_categories(media_id);
+CREATE INDEX idx_media_categories_category ON media_categories(category_id);
+
 -- Full-text search for media titles
 CREATE VIRTUAL TABLE media_fts USING fts5(
-    title, file_name, category,
+    title, file_name,
     content='media',
     content_rowid='id'
 );
@@ -118,14 +128,12 @@ CREATE VIRTUAL TABLE media_fts USING fts5(
 ## Initial Data Seeding
 
 ```sql
--- Default categories
-INSERT INTO categories (name, description, display_order, icon) VALUES
-('movie', 'Full-length movies and films', 1, '📽'),
-('tv', 'TV shows, series, and episodes', 2, '📺'),
-('porn', 'Adult content', 3, '🔞'),
-('custom', 'Uncategorized or custom downloads', 4, '📁');
-
--- Owner will be set during setup wizard (no default)
+-- Optional seed with helpful defaults (can be deleted by user)
+INSERT INTO categories (name, emoji) VALUES
+('Favorites', '❤️'),
+('Watch Later', '⏰'),
+('Music', '🎵')
+ON CONFLICT(name) DO NOTHING;  -- Only if not exists
 ```
 
 ## Database Module (`database.py`)
@@ -334,25 +342,32 @@ class DatabaseManager:
 
     # === Media Operations ===
 
-    def add_media(self, title: str, category: str, source_url: str,
-                  source_type: str, file_size: int, file_id: str = None,
-                  hash: str = None) -> int:
+    def add_media(self, title: str, source_url: str, source_type: str,
+                  file_size: int, file_id: str = None, hash: str = None,
+                  category_ids: List[int] = None) -> int:
         """Add completed media to library."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO media (title, category, source_url, source_type,
-                                 file_size, file_id, hash)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (title, category, source_url, source_type, file_size, file_id, hash))
+                INSERT INTO media (title, source_url, source_type, file_size, file_id, hash)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (title, source_url, source_type, file_size, file_id, hash))
 
             media_id = cursor.lastrowid
 
             # Update FTS index
             cursor.execute("""
-                INSERT INTO media_fts (rowid, title, file_name, category)
-                VALUES (?, ?, '', ?)
-            """, (media_id, title, category))
+                INSERT INTO media_fts (rowid, title, file_name)
+                VALUES (?, ?, '')
+            """, (media_id, title))
+
+            # Add to categories if provided
+            if category_ids:
+                for cat_id in category_ids:
+                    cursor.execute("""
+                        INSERT INTO media_categories (media_id, category_id)
+                        VALUES (?, ?)
+                    """, (media_id, cat_id))
 
             conn.commit()
             return media_id
@@ -408,15 +423,16 @@ class DatabaseManager:
 
             return [dict(row) for row in cursor.fetchall()]
 
-    def get_media_by_category(self, category: str) -> List[Dict]:
-        """Get all media in a category."""
+    def get_media_by_category(self, category_id: int) -> List[Dict]:
+        """Get all media in a category (many-to-many)."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT * FROM media
-                WHERE category = ?
-                ORDER BY created_at DESC
-            """, (category,))
+                SELECT m.* FROM media m
+                INNER JOIN media_categories mc ON m.id = mc.media_id
+                WHERE mc.category_id = ?
+                ORDER BY m.created_at DESC
+            """, (category_id,))
 
             return [dict(row) for row in cursor.fetchall()]
 
@@ -429,14 +445,74 @@ class DatabaseManager:
 
     # === Category Operations ===
 
+    def create_category(self, name: str, emoji: str = '📁') -> int:
+        """Create a new category."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO categories (name, emoji)
+                VALUES (?, ?)
+            """, (name, emoji))
+            conn.commit()
+            return cursor.lastrowid
+
+    def delete_category(self, category_id: int):
+        """Delete a category (cascades to media_categories)."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+            conn.commit()
+
+    def rename_category(self, category_id: int, new_name: str):
+        """Rename a category."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE categories SET name = ? WHERE id = ?
+            """, (new_name, category_id))
+            conn.commit()
+
     def get_all_categories(self) -> List[Dict]:
         """Get all categories."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT * FROM categories
-                ORDER BY display_order ASC
+                ORDER BY created_at ASC
             """)
+
+            return [dict(row) for row in cursor.fetchall()]
+
+    def add_media_to_category(self, media_id: int, category_id: int):
+        """Add media to a category."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR IGNORE INTO media_categories (media_id, category_id)
+                VALUES (?, ?)
+            """, (media_id, category_id))
+            conn.commit()
+
+    def remove_media_from_category(self, media_id: int, category_id: int):
+        """Remove media from a category."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM media_categories
+                WHERE media_id = ? AND category_id = ?
+            """, (media_id, category_id))
+            conn.commit()
+
+    def get_media_categories(self, media_id: int) -> List[Dict]:
+        """Get all categories for a media item."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT c.* FROM categories c
+                INNER JOIN media_categories mc ON c.id = mc.category_id
+                WHERE mc.media_id = ?
+                ORDER BY c.name ASC
+            """, (media_id,))
 
             return [dict(row) for row in cursor.fetchall()]
 
