@@ -10,7 +10,12 @@ python-dotenv>=1.0.0
 # Phase 4: Torrent Handler (aria2c)
 aria2p>=0.11.0
 
+# Phase 5: Direct Download Handler (yt-dlp)
+yt-dlp>=2023.0.0
+aiohttp>=3.8.0
+
+# Phase 6: Playwright Crawler
+playwright>=1.40.0
+
 # Future phases will add:
-# yt-dlp>=2023.12.0         # Phase 5: Direct Download Handler
-# playwright>=1.40.0        # Phase 6: Playwright Crawler
 # telethon>=1.34.0          # Phase 7: Userbot Uploader

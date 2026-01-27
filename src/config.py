@@ -28,6 +28,14 @@ ARIA2C_RPC_SECRET = os.getenv('ARIA2C_RPC_SECRET', '')  # Optional
 ARIA2C_DOWNLOAD_DIR = os.getenv('ARIA2C_DOWNLOAD_DIR', '/downloads/torrents')
 ARIA2C_MAX_CONCURRENT = int(os.getenv('ARIA2C_MAX_CONCURRENT', '3'))
 
+# Direct download settings
+DOWNLOAD_DIR = os.getenv('DOWNLOAD_DIR', '/tmp/downloads')
+YTDLP_FORMAT = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+
+# Playwright / Crawler settings
+BROWSER_HEADLESS = os.getenv('BROWSER_HEADLESS', 'true').lower() == 'true'
+BROWSER_TIMEOUT = int(os.getenv('BROWSER_TIMEOUT', '30000'))  # 30 seconds
+
 # Userbot credentials (for Phase 7 - Userbot Uploader)
 UPLOADER_API_ID = os.getenv('UPLOADER_API_ID')
 UPLOADER_API_HASH = os.getenv('UPLOADER_API_HASH')
