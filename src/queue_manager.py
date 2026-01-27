@@ -104,7 +104,7 @@ class QueueManager:
 
     async def mark_completed(self, download_id: int):
         """Mark download as completed."""
-        self.db.mark_completed(download_id=download_id)
+        self.db.update_download_status(download_id, 'completed')
         logger.info(f"Download completed: {download_id}")
 
     async def mark_failed(self, download_id: int, error_message: str):

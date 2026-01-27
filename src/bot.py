@@ -260,17 +260,8 @@ def detect_source_type(url: str) -> str:
 
 def is_ytdlp_supported(url: str) -> bool:
     """Check if URL is supported by yt-dlp."""
-    # Common yt-dlp supported sites
-    supported_domains = [
-        'youtube.com', 'youtu.be',
-        'vimeo.com',
-        'dailymotion.com',
-        # Add more as needed
-    ]
-
-    domain = urlparse(url).netloc.lower()
-
-    return any(domain in supported_domains)
+    # yt-dlp supports 1000+ sites, let it handle all HTTP/HTTPS URLs
+    return url.startswith(('http://', 'https://'))
 
 
 async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -285,6 +276,20 @@ async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     url = args[0]
+
+    # Validate URL length
+    if len(url) > 2048:
+        await update.message.reply_text("❌ URL too long (max 2048 characters)")
+        return
+
+    # Validate URL format
+    try:
+        result = urlparse(url)
+        if not all([result.scheme, result.netloc]):
+            raise ValueError("Invalid URL format")
+    except ValueError as e:
+        await update.message.reply_text(f"❌ Invalid URL: {str(e)}")
+        return
 
     try:
         # Detect source type
