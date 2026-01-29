@@ -22,6 +22,10 @@ def pytest_configure(config):
     )
 
 
+# Configure pytest-asyncio
+pytest_plugins = ('pytest_asyncio',)
+
+
 @pytest.fixture
 def mock_env():
     """Set up mock environment variables."""

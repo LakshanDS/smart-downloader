@@ -1,0 +1,874 @@
+2026-01-29 00:56:30,595 - bot - INFO - Starting bot...
+2026-01-29 00:56:30,596 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 00:56:31,511 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 00:56:31,513 - queue_manager - INFO - Queue Manager started
+2026-01-29 00:57:10,723 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 00:57:16,434 - handlers.userbot - DEBUG - Userbot text handler called: chat_id=8007758080, text='https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf20mb.pdf', in_setup=False
+2026-01-29 01:00:04,066 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 01:00:07,816 - bot - INFO - Starting bot...
+2026-01-29 01:00:07,817 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 01:00:08,539 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 01:00:08,539 - queue_manager - INFO - Queue Manager started
+2026-01-29 01:00:10,131 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 01:00:15,349 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://raw.githubusercontent.com/TestFileHub/File...', mode_active=True
+2026-01-29 01:00:15,349 - handlers.downloads - ERROR - Queue manager is None! Cannot add link to queue.
+2026-01-29 01:01:57,220 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 01:02:26,811 - bot - INFO - Starting bot...
+2026-01-29 01:02:26,812 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 01:04:31,494 - bot - INFO - Starting bot...
+2026-01-29 01:04:31,495 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 01:04:33,129 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 01:04:33,130 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x0000019EDF87F7A0>
+2026-01-29 01:04:33,131 - queue_manager - INFO - Queue Manager started
+2026-01-29 01:05:46,870 - bot - INFO - Starting bot...
+2026-01-29 01:05:46,870 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 01:05:47,986 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 01:05:47,987 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x00000238512C00B0>
+2026-01-29 01:05:47,988 - queue_manager - INFO - Queue Manager started
+2026-01-29 01:05:52,572 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 01:05:59,275 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://raw.githubusercontent.com/TestFileHub/File...', mode_active=True
+2026-01-29 01:05:59,276 - handlers.downloads - DEBUG - state.queue_manager check: <queue_manager.QueueManager object at 0x00000238512C00B0>, type: <class 'queue_manager.QueueManager'>
+2026-01-29 01:05:59,276 - handlers.downloads - INFO - Adding to queue: url='https://raw.githubusercontent.com/TestFileHub/File...', source=direct, chat_id=8007758080
+2026-01-29 01:05:59,552 - queue_manager - INFO - Added to queue: 3 (direct)
+2026-01-29 01:05:59,552 - handlers.downloads - INFO - Added to queue: queue_id=3
+2026-01-29 01:26:20,782 - bot - INFO - Starting bot...
+2026-01-29 01:26:20,783 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 01:26:21,469 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 01:26:21,470 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x00000229BD5F6510>
+2026-01-29 01:26:21,471 - queue_manager - INFO - Queue Manager started
+2026-01-29 01:26:29,403 - bot - ERROR - Error: no such column: priority
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\src\handlers\dashboard.py", line 108, in handle_dashboard_callback
+    queue_items = db.get_queue_items('pending')
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\database\manager.py", line 678, in get_queue_items
+    cursor = conn.execute("""
+             ^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such column: priority
+2026-01-29 01:29:53,837 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 01:29:57,554 - bot - INFO - Starting bot...
+2026-01-29 01:29:57,554 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 01:29:58,353 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 01:29:58,354 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x000002AD6B0548F0>
+2026-01-29 01:29:58,355 - queue_manager - INFO - Queue Manager started
+2026-01-29 01:31:00,755 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 09:57:27,004 - bot - INFO - Starting bot...
+2026-01-29 09:57:27,009 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 09:57:32,176 - telegram.ext - ERROR - Network Retry Loop (Bootstrap Initialize Application): Timed out: Timed out. Failed run number 0 of 0. Aborting.
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_backends\auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_backends\anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 279, in do_request
+    res = await self._client.request(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_utils\networkloop.py", line 161, in network_retry_loop
+    await do_action()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_utils\networkloop.py", line 136, in do_action
+    await action_cb()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_application.py", line 489, in initialize
+    await self.bot.initialize()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 315, in initialize
+    await super().initialize()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 856, in initialize
+    await self.get_me()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 2007, in get_me
+    return await super().get_me(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 989, in get_me
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 305, in _request_wrapper
+    code, payload = await self.do_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 296, in do_request
+    raise TimedOut from err
+telegram.error.TimedOut: Timed out
+2026-01-29 10:06:20,150 - bot - INFO - Starting bot...
+2026-01-29 10:06:20,151 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:06:21,786 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:06:21,801 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x000001BAA86E4A40>
+2026-01-29 10:06:21,801 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:10:47,922 - bot - ERROR - Error: httpx.ConnectError: [Errno 11001] getaddrinfo failed
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_backends\auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_backends\anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 279, in do_request
+    res = await self._client.request(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_utils\networkloop.py", line 161, in network_retry_loop
+    await do_action()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_utils\networkloop.py", line 154, in do_action
+    action_cb_task.result()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_updater.py", line 340, in polling_action_cb
+    updates = await self.bot.get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 671, in get_updates
+    updates = await super().get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 4860, in get_updates
+    await self._post(
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 305, in _request_wrapper
+    code, payload = await self.do_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 303, in do_request
+    raise NetworkError(f"httpx.{err.__class__.__name__}: {err}") from err
+telegram.error.NetworkError: httpx.ConnectError: [Errno 11001] getaddrinfo failed
+2026-01-29 10:11:00,988 - bot - ERROR - Error: httpx.ConnectError: [Errno 11001] getaddrinfo failed
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_async\connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_backends\auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_backends\anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 279, in do_request
+    res = await self._client.request(
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_utils\networkloop.py", line 161, in network_retry_loop
+    await do_action()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_utils\networkloop.py", line 154, in do_action
+    action_cb_task.result()
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_updater.py", line 340, in polling_action_cb
+    updates = await self.bot.get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 671, in get_updates
+    updates = await super().get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 4860, in get_updates
+    await self._post(
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 305, in _request_wrapper
+    code, payload = await self.do_request(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_httpxrequest.py", line 303, in do_request
+    raise NetworkError(f"httpx.{err.__class__.__name__}: {err}") from err
+telegram.error.NetworkError: httpx.ConnectError: [Errno 11001] getaddrinfo failed
+2026-01-29 10:28:27,935 - bot - INFO - Starting bot...
+2026-01-29 10:28:27,935 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:28:29,687 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:28:29,690 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x0000017015C293A0>
+2026-01-29 10:28:29,691 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:31:26,190 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:31:29,811 - bot - INFO - Starting bot...
+2026-01-29 10:31:29,812 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:31:31,123 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:31:31,123 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x00000241DD9E13A0>
+2026-01-29 10:31:31,123 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:31:43,421 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:33:02,130 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:33:05,731 - bot - INFO - Starting bot...
+2026-01-29 10:33:05,731 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:33:06,971 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:33:06,971 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x00000243F9DF93A0>
+2026-01-29 10:33:06,971 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:33:10,364 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:33:10,366 - handlers.dashboard - DEBUG - [DASHBOARD] skipping queue callback: dashboard_queue
+2026-01-29 10:34:03,982 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:34:07,677 - bot - INFO - Starting bot...
+2026-01-29 10:34:07,677 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:34:08,870 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:34:08,870 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x000001E67DB24770>
+2026-01-29 10:34:08,870 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:34:11,233 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:34:11,233 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:34:15,411 - handlers.queue - DEBUG - [QUEUE] callback: queue_delete_2 from chat_id=8007758080
+2026-01-29 10:34:15,699 - handlers.queue - INFO - Deleted queue item 2
+2026-01-29 10:34:20,441 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:34:20,442 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:34:23,237 - handlers.queue - DEBUG - [QUEUE] callback: queue_delete_3 from chat_id=8007758080
+2026-01-29 10:34:23,508 - handlers.queue - INFO - Deleted queue item 3
+2026-01-29 10:34:26,132 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 10:34:30,832 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:34:30,832 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:34:36,437 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:34:36,440 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:35:03,633 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download_done from chat_id=8007758080
+2026-01-29 10:35:06,562 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:35:06,565 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:38:24,147 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:38:24,151 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:38:29,701 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:38:33,412 - bot - INFO - Starting bot...
+2026-01-29 10:38:33,413 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:38:34,585 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:38:34,587 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x000002058B4CCA10>
+2026-01-29 10:38:34,588 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:38:36,992 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:38:36,995 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:38:42,273 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download_done from chat_id=8007758080
+2026-01-29 10:38:42,276 - handlers.dashboard - INFO - Deactivated link submission mode for chat_id=8007758080 (Done button)
+2026-01-29 10:40:07,155 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:40:07,155 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:40:09,388 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:40:09,390 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:40:12,629 - handlers.userbot - DEBUG - Userbot text handler called: chat_id=8007758080, text='https://raw.githubusercontent.com/TestFileHub/FileHub/main/pdf/pdf20mb.pdf', in_setup=False
+2026-01-29 10:40:30,525 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download_done from chat_id=8007758080
+2026-01-29 10:40:30,528 - handlers.dashboard - INFO - Deactivated link submission mode for chat_id=8007758080 (Done button)
+2026-01-29 10:40:37,469 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:40:37,472 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:40:40,265 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 10:41:40,449 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:41:43,805 - bot - INFO - Starting bot...
+2026-01-29 10:41:43,805 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:41:44,895 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:41:44,896 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x000002B15CB55AF0>
+2026-01-29 10:41:44,897 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:41:53,546 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:41:53,549 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:41:56,937 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://raw.githubusercontent.com/TestFileHub/File...', mode_active=True
+2026-01-29 10:41:56,937 - handlers.downloads - DEBUG - state.queue_manager check: <queue_manager.QueueManager object at 0x000002B15CB55AF0>, type: <class 'queue_manager.QueueManager'>
+2026-01-29 10:41:56,938 - handlers.downloads - INFO - Adding to queue: url='https://raw.githubusercontent.com/TestFileHub/File...', source=direct, chat_id=8007758080
+2026-01-29 10:41:57,227 - queue_manager - INFO - Added to queue: 4 (direct)
+2026-01-29 10:41:57,227 - handlers.downloads - INFO - Added to queue: queue_id=4
+2026-01-29 10:42:04,096 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download_done from chat_id=8007758080
+2026-01-29 10:42:04,096 - handlers.dashboard - INFO - Deactivated link submission mode for chat_id=8007758080 (Done button)
+2026-01-29 10:42:06,419 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:42:06,420 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:42:16,350 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 10:42:18,621 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_downloads from chat_id=8007758080
+2026-01-29 10:42:23,137 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 10:42:26,366 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:42:26,374 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:42:29,742 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_4 from chat_id=8007758080
+2026-01-29 10:42:30,450 - handlers.queue - INFO - Queue item 4 priority changed to 10
+2026-01-29 10:42:33,556 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:42:33,561 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:44:43,037 - bot - INFO - Starting bot...
+2026-01-29 10:44:43,037 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:44:44,297 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:44:44,299 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x00000299F8D94770>
+2026-01-29 10:44:44,301 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:44:47,531 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:44:47,533 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:44:48,498 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:44:48,499 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:44:49,005 - bot - ERROR - Error: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\src\handlers\dashboard.py", line 49, in handle_dashboard_callback
+    await query.edit_message_text(
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_callbackquery.py", line 269, in edit_message_text
+    return await self._get_message().edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_message.py", line 4205, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1732, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 4543, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 629, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 819, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-01-29 10:44:54,032 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://www.facebook.com/share/v/1AEPbCXRps/...', mode_active=True
+2026-01-29 10:44:54,032 - handlers.downloads - DEBUG - state.queue_manager check: <queue_manager.QueueManager object at 0x00000299F8D94770>, type: <class 'queue_manager.QueueManager'>
+2026-01-29 10:44:54,032 - handlers.downloads - INFO - Adding to queue: url='https://www.facebook.com/share/v/1AEPbCXRps/...', source=direct, chat_id=8007758080
+2026-01-29 10:44:54,389 - queue_manager - INFO - Added to queue: 5 (direct)
+2026-01-29 10:44:54,389 - handlers.downloads - INFO - Added to queue: queue_id=5
+2026-01-29 10:44:59,699 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download_done from chat_id=8007758080
+2026-01-29 10:44:59,700 - handlers.dashboard - INFO - Deactivated link submission mode for chat_id=8007758080 (Done button)
+2026-01-29 10:45:02,585 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:45:02,587 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:45:06,034 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_4 from chat_id=8007758080
+2026-01-29 10:45:06,776 - handlers.queue - INFO - Queue item 4 priority changed to 20
+2026-01-29 10:45:07,254 - bot - ERROR - Error: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 100, in handle_queue_callback
+    await show_queue_view(query)
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 51, in show_queue_view
+    await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode='Markdown')
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_callbackquery.py", line 269, in edit_message_text
+    return await self._get_message().edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_message.py", line 4205, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1732, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 4543, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 629, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 819, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-01-29 10:45:11,223 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_5 from chat_id=8007758080
+2026-01-29 10:45:11,959 - handlers.queue - INFO - Queue item 5 priority changed to 10
+2026-01-29 10:45:12,527 - bot - ERROR - Error: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 100, in handle_queue_callback
+    await show_queue_view(query)
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 51, in show_queue_view
+    await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode='Markdown')
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_callbackquery.py", line 269, in edit_message_text
+    return await self._get_message().edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_message.py", line 4205, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1732, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 4543, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 629, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 819, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-01-29 10:49:29,020 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:49:34,127 - bot - INFO - Starting bot...
+2026-01-29 10:49:34,128 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:49:35,271 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:49:35,273 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x000001A604B49B20>
+2026-01-29 10:49:35,274 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:49:43,300 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 10:49:45,699 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:49:45,699 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:49:50,809 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_5 from chat_id=8007758080
+2026-01-29 10:49:51,963 - handlers.queue - INFO - Swapped queue items: 5 (priority 10->20) <-> 4 (20->10)
+2026-01-29 10:49:58,725 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_5 from chat_id=8007758080
+2026-01-29 10:50:03,935 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_4 from chat_id=8007758080
+2026-01-29 10:50:04,915 - handlers.queue - INFO - Swapped queue items: 4 (priority 10->20) <-> 5 (20->10)
+2026-01-29 10:50:14,017 - handlers.queue - DEBUG - [QUEUE] callback: queue_delete_5 from chat_id=8007758080
+2026-01-29 10:50:14,317 - handlers.queue - INFO - Deleted queue item 5
+2026-01-29 10:51:19,417 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:51:19,417 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:51:33,185 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:51:36,495 - bot - INFO - Starting bot...
+2026-01-29 10:51:36,495 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:51:37,735 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:51:37,736 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x000001EF37F4E540>
+2026-01-29 10:51:37,736 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:51:42,884 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:51:42,885 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:51:47,067 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://www.facebook.com/share/v/1AEPbCXRps/...', mode_active=True
+2026-01-29 10:51:47,067 - handlers.downloads - DEBUG - state.queue_manager check: <queue_manager.QueueManager object at 0x000001EF37F4E540>, type: <class 'queue_manager.QueueManager'>
+2026-01-29 10:51:47,068 - handlers.downloads - INFO - Adding to queue: url='https://www.facebook.com/share/v/1AEPbCXRps/...', source=direct, chat_id=8007758080
+2026-01-29 10:51:47,376 - queue_manager - INFO - Added to queue: 6 (direct)
+2026-01-29 10:51:47,377 - handlers.downloads - INFO - Added to queue: queue_id=6
+2026-01-29 10:51:53,132 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download_done from chat_id=8007758080
+2026-01-29 10:51:53,135 - handlers.dashboard - INFO - Deactivated link submission mode for chat_id=8007758080 (Done button)
+2026-01-29 10:51:55,617 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:51:55,620 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:52:00,734 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_6 from chat_id=8007758080
+2026-01-29 10:52:01,788 - handlers.queue - INFO - Swapped queue items: 6 (priority 0->20) <-> 4 (20->0)
+2026-01-29 10:52:06,476 - handlers.queue - DEBUG - [QUEUE] callback: queue_delete_6 from chat_id=8007758080
+2026-01-29 10:52:06,735 - handlers.queue - INFO - Deleted queue item 6
+2026-01-29 10:52:12,321 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 10:52:18,022 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download from chat_id=8007758080
+2026-01-29 10:52:18,031 - handlers.dashboard - INFO - Activated link submission mode for chat_id=8007758080
+2026-01-29 10:52:23,429 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://www.facebook.com/share/v/1AEPbCXRps/...', mode_active=True
+2026-01-29 10:52:23,429 - handlers.downloads - DEBUG - state.queue_manager check: <queue_manager.QueueManager object at 0x000001EF37F4E540>, type: <class 'queue_manager.QueueManager'>
+2026-01-29 10:52:23,429 - handlers.downloads - INFO - Adding to queue: url='https://www.facebook.com/share/v/1AEPbCXRps/...', source=direct, chat_id=8007758080
+2026-01-29 10:52:23,765 - queue_manager - INFO - Added to queue: 7 (direct)
+2026-01-29 10:52:23,765 - handlers.downloads - INFO - Added to queue: queue_id=7
+2026-01-29 10:52:27,849 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://www.facebook.com/share/r/1DGrJYGMwF/...', mode_active=True
+2026-01-29 10:52:27,849 - handlers.downloads - DEBUG - state.queue_manager check: <queue_manager.QueueManager object at 0x000001EF37F4E540>, type: <class 'queue_manager.QueueManager'>
+2026-01-29 10:52:27,849 - handlers.downloads - INFO - Adding to queue: url='https://www.facebook.com/share/r/1DGrJYGMwF/...', source=direct, chat_id=8007758080
+2026-01-29 10:52:28,103 - queue_manager - INFO - Added to queue: 8 (direct)
+2026-01-29 10:52:28,103 - handlers.downloads - INFO - Added to queue: queue_id=8
+2026-01-29 10:52:31,568 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://www.facebook.com/share/p/16zjqARG6P/...', mode_active=True
+2026-01-29 10:52:31,568 - handlers.downloads - DEBUG - state.queue_manager check: <queue_manager.QueueManager object at 0x000001EF37F4E540>, type: <class 'queue_manager.QueueManager'>
+2026-01-29 10:52:31,568 - handlers.downloads - INFO - Adding to queue: url='https://www.facebook.com/share/p/16zjqARG6P/...', source=direct, chat_id=8007758080
+2026-01-29 10:52:31,909 - queue_manager - INFO - Added to queue: 9 (direct)
+2026-01-29 10:52:31,909 - handlers.downloads - INFO - Added to queue: queue_id=9
+2026-01-29 10:52:33,698 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://www.facebook.com/share/p/1CfWVSSg1s/...', mode_active=True
+2026-01-29 10:52:33,698 - handlers.downloads - DEBUG - state.queue_manager check: <queue_manager.QueueManager object at 0x000001EF37F4E540>, type: <class 'queue_manager.QueueManager'>
+2026-01-29 10:52:33,698 - handlers.downloads - INFO - Adding to queue: url='https://www.facebook.com/share/p/1CfWVSSg1s/...', source=direct, chat_id=8007758080
+2026-01-29 10:52:33,960 - queue_manager - INFO - Added to queue: 10 (direct)
+2026-01-29 10:52:33,960 - handlers.downloads - INFO - Added to queue: queue_id=10
+2026-01-29 10:52:36,802 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_new_download_done from chat_id=8007758080
+2026-01-29 10:52:36,802 - handlers.dashboard - INFO - Deactivated link submission mode for chat_id=8007758080 (Done button)
+2026-01-29 10:52:40,089 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:52:40,096 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:52:50,323 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_9 from chat_id=8007758080
+2026-01-29 10:52:51,386 - handlers.queue - INFO - Swapped queue items: 9 (priority 0->0) <-> 8 (0->0)
+2026-01-29 10:52:51,879 - bot - ERROR - Error: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 126, in handle_queue_callback
+    await show_queue_view(query)
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 50, in show_queue_view
+    await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode='Markdown')
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_callbackquery.py", line 269, in edit_message_text
+    return await self._get_message().edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_message.py", line 4205, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1732, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 4543, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 629, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 819, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-01-29 10:53:19,154 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_10 from chat_id=8007758080
+2026-01-29 10:53:20,211 - handlers.queue - INFO - Swapped queue items: 10 (priority 0->0) <-> 9 (0->0)
+2026-01-29 10:53:20,695 - bot - ERROR - Error: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 126, in handle_queue_callback
+    await show_queue_view(query)
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 50, in show_queue_view
+    await query.edit_message_text(msg, reply_markup=reply_markup, parse_mode='Markdown')
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_callbackquery.py", line 269, in edit_message_text
+    return await self._get_message().edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_message.py", line 4205, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1732, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 4543, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 629, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 819, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-01-29 10:53:30,178 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_4 from chat_id=8007758080
+2026-01-29 10:53:33,176 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_7 from chat_id=8007758080
+2026-01-29 10:53:34,178 - handlers.queue - INFO - Swapped queue items: 7 (priority 0->0) <-> 4 (0->0)
+2026-01-29 10:53:34,710 - bot - ERROR - Error: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+Traceback (most recent call last):
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_application.py", line 1315, in process_update
+    await coroutine
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_handlers\basehandler.py", line 159, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 126, in handle_queue_callback
+    # Refresh queue view to show new order
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\src\handlers\queue.py", line 50, in show_queue_view
+    reply_markup = InlineKeyboardMarkup(keyboard)
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_callbackquery.py", line 269, in edit_message_text
+    return await self._get_message().edit_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_message.py", line 4205, in edit_text
+    return await self.get_bot().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 1732, in edit_message_text
+    return await super().edit_message_text(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 4543, in edit_message_text
+    return await self._send_message(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 629, in _send_message
+    result = await super()._send_message(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 819, in _send_message
+    result = await self._post(
+             ^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\ext\_extbot.py", line 369, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\smart-downloader\.venv\Lib\site-packages\telegram\request\_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.BadRequest: Message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message
+2026-01-29 10:53:53,938 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:53:57,687 - bot - INFO - Starting bot...
+2026-01-29 10:53:57,688 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:53:58,842 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:53:58,843 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x000001E33AAC94C0>
+2026-01-29 10:53:58,844 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:54:01,047 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 10:54:03,682 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:54:03,684 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:54:07,389 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_7 from chat_id=8007758080
+2026-01-29 10:54:08,359 - handlers.queue - INFO - Swapped queue items: 7 (priority 0->0) <-> 4 (0->0)
+2026-01-29 10:54:28,805 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_8 from chat_id=8007758080
+2026-01-29 10:54:29,846 - handlers.queue - INFO - Swapped queue items: 8 (priority 0->0) <-> 7 (0->0)
+2026-01-29 10:54:40,739 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 10:54:42,976 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:54:42,977 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 10:54:45,793 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_7 from chat_id=8007758080
+2026-01-29 10:54:46,790 - handlers.queue - INFO - Swapped queue items: 7 (priority 0->0) <-> 4 (0->0)
+2026-01-29 10:57:59,704 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 10:58:02,948 - bot - INFO - Starting bot...
+2026-01-29 10:58:02,948 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 10:58:04,133 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 10:58:04,134 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x0000012051575CD0>
+2026-01-29 10:58:04,135 - queue_manager - INFO - Queue Manager started
+2026-01-29 10:58:08,877 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_10 from chat_id=8007758080
+2026-01-29 10:58:10,735 - handlers.queue - INFO - Initialized queue priorities for 5 items
+2026-01-29 10:58:11,211 - handlers.queue - INFO - Swapped queue items: 10 (priority 60->70) <-> 9 (70->60)
+2026-01-29 10:58:20,258 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_7 from chat_id=8007758080
+2026-01-29 10:58:21,312 - handlers.queue - INFO - Swapped queue items: 7 (priority 90->100) <-> 4 (100->90)
+2026-01-29 10:58:25,764 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_8 from chat_id=8007758080
+2026-01-29 10:58:26,874 - handlers.queue - INFO - Swapped queue items: 8 (priority 80->90) <-> 4 (90->80)
+2026-01-29 10:58:29,590 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_10 from chat_id=8007758080
+2026-01-29 10:58:30,590 - handlers.queue - INFO - Swapped queue items: 10 (priority 70->80) <-> 4 (80->70)
+2026-01-29 10:58:33,363 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_9 from chat_id=8007758080
+2026-01-29 10:58:34,390 - handlers.queue - INFO - Swapped queue items: 9 (priority 60->70) <-> 4 (70->60)
+2026-01-29 10:58:37,517 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_4 from chat_id=8007758080
+2026-01-29 10:58:38,799 - handlers.queue - INFO - Swapped queue items: 4 (priority 60->70) <-> 9 (70->60)
+2026-01-29 10:58:41,443 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_4 from chat_id=8007758080
+2026-01-29 10:58:42,583 - handlers.queue - INFO - Swapped queue items: 4 (priority 70->80) <-> 10 (80->70)
+2026-01-29 10:58:45,114 - handlers.queue - DEBUG - [QUEUE] callback: queue_move_up_4 from chat_id=8007758080
+2026-01-29 10:58:46,150 - handlers.queue - INFO - Swapped queue items: 4 (priority 80->90) <-> 8 (90->80)
+2026-01-29 10:58:48,813 - handlers.queue - DEBUG - [QUEUE] callback: queue_edit_8 from chat_id=8007758080
+2026-01-29 10:58:55,071 - handlers.downloads - DEBUG - Link submission received: chat_id=8007758080, text='https://raw.githubusercontent.com/TestFileHub/File...', mode_active=False
+2026-01-29 10:58:55,071 - handlers.downloads - DEBUG - Link submission ignored: not in submission mode
+2026-01-29 10:59:13,610 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 10:59:13,613 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 11:01:04,713 - asyncio - ERROR - Task was destroyed but it is pending!
+task: <Task pending name='Task-6' coro=<QueueManager.start() running at D:\Projects\smart-downloader\src\queue_manager.py:67> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+2026-01-29 11:06:34,693 - bot - INFO - Starting bot...
+2026-01-29 11:06:34,693 - asyncio - DEBUG - Using proactor: IocpProactor
+2026-01-29 11:06:36,197 - bot - INFO - Bot is set up. Initializing queue manager...
+2026-01-29 11:06:36,197 - bot - INFO - Queue manager assigned to state.queue_manager: <queue_manager.QueueManager object at 0x0000024A69FA0BC0>
+2026-01-29 11:06:36,197 - queue_manager - INFO - Queue Manager started
+2026-01-29 11:06:44,471 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 11:06:48,869 - handlers.queue - DEBUG - [QUEUE] callback: dashboard_queue from chat_id=8007758080
+2026-01-29 11:06:48,872 - handlers.queue - DEBUG - [QUEUE] showing queue view
+2026-01-29 11:06:58,681 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080
+2026-01-29 11:12:02,555 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_downloads from chat_id=8007758080
+2026-01-29 11:12:21,040 - handlers.dashboard - DEBUG - [DASHBOARD] callback: dashboard_back from chat_id=8007758080

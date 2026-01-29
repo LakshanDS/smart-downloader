@@ -24,6 +24,7 @@ class TestCleanupManager:
         conn = MagicMock()
         cursor = MagicMock()
         conn.cursor.return_value = cursor
+        # Make get_connection work as context manager
         db.get_connection.return_value.__enter__ = Mock(return_value=conn)
         db.get_connection.return_value.__exit__ = Mock(return_value=False)
         return db
@@ -44,16 +45,16 @@ class TestCleanupManager:
 
     def test_get_chats_to_clear_empty(self, cleanup_manager):
         """Test getting chats when none need cleanup."""
-        cleanup_manager.db.cursor().fetchall.return_value = []
+        cleanup_manager.db.get_connection.return_value.__enter__.return_value.cursor().fetchall.return_value = []
 
         chats = cleanup_manager.get_chats_to_clear(hours=24)
 
         assert chats == []
-        cleanup_manager.db.cursor().execute.assert_called_once()
+        cleanup_manager.db.get_connection.return_value.__enter__.return_value.cursor().execute.assert_called_once()
 
     def test_get_chats_to_clear_with_chats(self, cleanup_manager):
         """Test getting chats that need cleanup."""
-        cleanup_manager.db.cursor().fetchall.return_value = [
+        cleanup_manager.db.get_connection.return_value.__enter__.return_value.cursor().fetchall.return_value = [
             (123456,),
             (789012,),
         ]
@@ -71,7 +72,7 @@ class TestCleanupManager:
         cleanup_manager.get_chats_to_clear(hours=24)
 
         # Check that execute was called with the threshold
-        execute_call = cleanup_manager.db.cursor().execute.call_args
+        execute_call = cleanup_manager.db.get_connection.return_value.__enter__.return_value.cursor().execute.call_args
         assert execute_call is not None
 
     @pytest.mark.asyncio
@@ -81,7 +82,7 @@ class TestCleanupManager:
             await cleanup_manager._cleanup_chat(123456)
 
             # Should not try to delete or update activity
-            cleanup_manager.db.cursor().execute.assert_not_called()
+            cleanup_manager.db.get_connection.return_value.__enter__.return_value.cursor().execute.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_cleanup_chat_fewer_than_keep(self, cleanup_manager):
@@ -90,7 +91,9 @@ class TestCleanupManager:
             await cleanup_manager._cleanup_chat(123456)
 
             # Should not delete (2 messages <= keep 3)
-            assert not cleanup_manager._delete_bot_message.called
+            with patch.object(cleanup_manager, '_delete_bot_message', return_value=False) as mock_delete:
+                await cleanup_manager._cleanup_chat(123456)
+                mock_delete.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_cleanup_chat_delete_messages(self, cleanup_manager):
@@ -115,7 +118,9 @@ class TestCleanupManager:
             await cleanup_manager.check_and_clean_chats()
 
             # Should not attempt to clean any chat
-            assert not cleanup_manager._cleanup_chat.called
+            with patch.object(cleanup_manager, '_cleanup_chat', new_callable=AsyncMock) as mock_cleanup:
+                await cleanup_manager.check_and_clean_chats()
+                mock_cleanup.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_check_and_clean_chats_with_chats(self, cleanup_manager):
@@ -136,8 +141,8 @@ class TestCleanupManager:
         cleanup_manager._update_chat_activity(123456)
 
         # Should update the activity log
-        cleanup_manager.db.cursor().execute.assert_called()
-        cleanup_manager.db.get_connection.return_value.__enter__.commit.assert_called()
+        cleanup_manager.db.get_connection.return_value.__enter__.return_value.cursor().execute.assert_called()
+        cleanup_manager.db.get_connection.return_value.__enter__.return_value.commit.assert_called()
 
     def test_get_status(self, cleanup_manager):
         """Test getting cleanup status."""
@@ -168,12 +173,12 @@ class TestCleanupManager:
 
         with patch.object(cleanup_manager, 'check_and_clean_chats', new_callable=AsyncMock) as mock_check:
             with patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
-                # Make it stop after one check
-                mock_sleep.side_effect = [None, asyncio.CancelledError()]
+                # Make sleep raise CancelledError immediately
+                mock_sleep.side_effect = asyncio.CancelledError()
 
                 await cleanup_manager.start(interval_minutes=1)
 
-                # Should check and then sleep
+                # Should check once before sleep raises CancelledError
                 mock_check.assert_called_once()
 
     def test_stop(self, cleanup_manager):

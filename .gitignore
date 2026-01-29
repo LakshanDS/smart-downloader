@@ -49,3 +49,4 @@ downloads/
 temp/
 nul
 .env
+logs/

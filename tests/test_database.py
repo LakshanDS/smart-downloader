@@ -15,8 +15,8 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Add project root to path (database package is now at root)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from database import DatabaseManager
 

@@ -15,6 +15,10 @@ BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 if not BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
 
+OWNER_ID = os.getenv('OWNER_ID')
+if not OWNER_ID:
+    raise ValueError("OWNER_ID environment variable is required (get from @userinfobot)")
+
 DATABASE_PATH = os.getenv('DATABASE_PATH', 'smart_downloader.db')
 
 # Download settings

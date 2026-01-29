@@ -12,6 +12,9 @@ from datetime import datetime
 from typing import Optional, List, Dict
 from contextlib import contextmanager
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
@@ -54,6 +57,13 @@ class DatabaseManager:
 
             # Create FTS table
             cursor.execute(self._sql_fts())
+
+            # Migration: Add priority column if missing
+            cursor.execute("PRAGMA table_info(downloads)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'priority' not in columns:
+                cursor.execute("ALTER TABLE downloads ADD COLUMN priority INTEGER DEFAULT 0")
+                logger.info("Added priority column to downloads table")
 
             conn.commit()
 
@@ -669,3 +679,56 @@ class DatabaseManager:
     def close(self):
         """Close database connections if needed."""
         pass  # Connections are managed via context manager
+
+    # Queue CRUD operations
+
+    def get_queue_items(self, status: str = 'pending') -> List[Dict]:
+        """Get all queue items, ordered by priority and added_date."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT * FROM downloads
+                WHERE status = ?
+                ORDER BY priority DESC, added_date ASC
+            """, (status,))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def delete_queue_item(self, item_id: int) -> bool:
+        """Delete a queue item by ID."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("DELETE FROM downloads WHERE id = ?", (item_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_queue_url(self, item_id: int, new_url: str) -> bool:
+        """Update the URL of a queue item."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                UPDATE downloads
+                SET url = ?, updated_at = ?
+                WHERE id = ?
+            """, (new_url, datetime.now().isoformat(), item_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def reorder_queue(self, item_id: int, new_position: int) -> bool:
+        """Reorder queue item by setting priority (higher priority = processes sooner)."""
+        with self.get_connection() as conn:
+            # Use negative position as priority (so position 1 gets highest priority)
+            cursor = conn.execute("""
+                UPDATE downloads
+                SET priority = ?, updated_at = ?
+                WHERE id = ?
+            """, (-new_position, datetime.now().isoformat(), item_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def set_queue_priority(self, item_id: int, priority: int) -> bool:
+        """Set priority for a queue item (higher = processes sooner)."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                UPDATE downloads
+                SET priority = ?, updated_at = ?
+                WHERE id = ?
+            """, (priority, datetime.now().isoformat(), item_id))
+            conn.commit()
+            return cursor.rowcount > 0

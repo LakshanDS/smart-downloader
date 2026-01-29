@@ -4,7 +4,30 @@ All notable changes to Smart Downloader will be documented in this file.
 
 ## [Unreleased]
 
-### [UNCOMMITTED] - 2026-01-28
+### [3175ee6] - 2026-01-28
+
+#### Added
+- Phase 7: Auto-clear timer (`src/cleanup_manager.py`) - Background chat message cleanup
+- Phase 8: Userbot uploader (`src/uploader_bot.py`, `src/upload_manager.py`) - 2GB file upload support
+- Phase 9: Content organization (`src/category_manager.py`) - Categories, file browser, search, favorites
+- Phase 10: Health monitor (`src/health_monitor.py`) - Service monitoring and auto-recovery
+- Test files: `test_phase07.py`, `test_phase08.py`, `test_phase09.py`, `test_phase10.py`
+- `pytest.ini` - pytest configuration with asyncio_mode = auto
+
+#### Changed
+- `tests/conftest.py` - Added pytest-asyncio plugin configuration
+
+#### Fixed
+- **BUG-006**: pytest-asyncio configuration - added `pytest_plugins = ('pytest_asyncio',)` to conftest.py
+- **BUG-007**: Missing `telethon` dependency - installed via `pip install -r requirements.txt`
+
+#### Known issue
+- `_get_bot_messages()` and `_delete_bot_message()` are stubs requiring bot client integration
+- Linux-specific subprocess commands (`pkill`, `/tmp/downloads`)
+
+---
+
+### [00f123d] - 2026-01-28
 
 #### Added
 - `src/config_test.py` - Mock configuration for test isolation
@@ -32,15 +55,5 @@ All notable changes to Smart Downloader will be documented in this file.
 
 #### Fixed
 - Windows console encoding in test output (non-ASCII characters)
-
-#### Fixed
-- **BUG-003**: Windows console encoding in test output (non-ASCII characters)
-
-#### Known issue
-- Category encoding fix is local to `tests/test_database.py` - should be moved to conftest.py or pytest.ini
-- **BUG-001**: Phase 3-4 tests blocked by missing `python-telegram-bot` dependency
-- **BUG-002**: Phase 5-6 tests blocked by TELEGRAM_BOT_TOKEN environment variable requirement
-- **BUG-003**: UnicodeEncodeError in test output on Windows (partial fix in test_database.py only)
-- **BUG-004**: "File too large" warning during Phase 5-6 test execution
 
 ---

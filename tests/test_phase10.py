@@ -69,11 +69,19 @@ class TestHealthMonitor:
         mock_response.status = 200
         mock_response.json = AsyncMock(return_value={'result': {'version': '1.36.0'}})
 
+        # Create a mock async context manager for session.post()
+        class MockPostContext:
+            async def __aenter__(self):
+                return mock_response
+
+            async def __aexit__(self, *args):
+                pass
+
         with patch('aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
             mock_session.__aexit__ = AsyncMock()
-            mock_session.post = AsyncMock(return_value=mock_response)
+            mock_session.post = Mock(return_value=MockPostContext())
             mock_session_class.return_value = mock_session
 
             result = await health_monitor._check_aria2c()

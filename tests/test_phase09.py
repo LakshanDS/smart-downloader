@@ -42,11 +42,11 @@ class TestCategoryManager:
         """Create mock update."""
         update = Mock(spec=Update)
         update.message = Mock()
-        update.message.reply_text = Mock()
+        update.message.reply_text = AsyncMock()
         update.callback_query = Mock()
-        update.callback_query.answer = Mock()
+        update.callback_query.answer = AsyncMock()
         update.callback_query.data = None
-        update.callback_query.edit_message_text = Mock()
+        update.callback_query.edit_message_text = AsyncMock()
         return update
 
     @pytest.fixture
@@ -64,7 +64,6 @@ class TestCategoryManager:
     @pytest.mark.asyncio
     async def test_list_categories_empty(self, category_manager, mock_update, mock_context):
         """Test listing categories when none exist."""
-        mock_db.return_value.get_all_categories.return_value = []
         category_manager.db.get_all_categories.return_value = []
 
         await category_manager.list_categories(mock_update, mock_context)
@@ -167,9 +166,13 @@ class TestCategoryManager:
         """Test handling toggle callback."""
         mock_update.callback_query.data = 'addcat_123_1'
         category_manager.db.get_media_categories.return_value = []
+        category_manager.db.add_media_to_category = Mock()
+        category_manager.db.remove_media_from_category = Mock()
 
-        with pytest.raises(Exception):
-            await category_manager.handle_callback(mock_update, mock_context)
+        await category_manager.handle_callback(mock_update, mock_context)
+
+        # Verify the callback was answered
+        mock_update.callback_query.answer.assert_called_once()
 
 
 class TestFileBrowser:
@@ -182,8 +185,9 @@ class TestFileBrowser:
         conn = MagicMock()
         cursor = MagicMock()
         conn.cursor.return_value = cursor
-        db.get_connection.return_value.__enter__ = Mock(return_value=conn)
-        db.get_connection.return_value.__exit__ = Mock(return_value=False)
+        conn.__enter__ = Mock(return_value=conn)
+        conn.__exit__ = Mock(return_value=False)
+        db.get_connection.return_value = conn
         return db
 
     @pytest.fixture
@@ -196,7 +200,7 @@ class TestFileBrowser:
         """Create mock update."""
         update = Mock(spec=Update)
         update.message = Mock()
-        update.message.reply_text = Mock()
+        update.message.reply_text = AsyncMock()
         return update
 
     def test_init(self, mock_db):
@@ -208,7 +212,7 @@ class TestFileBrowser:
     @pytest.mark.asyncio
     async def test_show_all_files_empty(self, file_browser, mock_update):
         """Test showing files when none exist."""
-        file_browser.db.get_connection.return_value.__enter__.cursor().fetchall.return_value = []
+        file_browser.db.get_connection.return_value.cursor.return_value.fetchall.return_value = []
 
         await file_browser.show_all_files(mock_update, page=1)
 
@@ -220,7 +224,7 @@ class TestFileBrowser:
         mock_items = [
             {'id': 1, 'title': 'Movie 1', 'file_size': 1024000, 'is_favorite': False, 'created_at': '2026-01-27'},
         ]
-        file_browser.db.get_connection.return_value.__enter__.cursor().fetchall.return_value = mock_items
+        file_browser.db.get_connection.return_value.cursor.return_value.fetchall.return_value = mock_items
 
         await file_browser.show_all_files(mock_update, page=1)
 
@@ -250,7 +254,7 @@ class TestSearchHandler:
         """Create mock update."""
         update = Mock(spec=Update)
         update.message = Mock()
-        update.message.reply_text = Mock()
+        update.message.reply_text = AsyncMock()
         return update
 
     @pytest.fixture

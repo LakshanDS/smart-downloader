@@ -15,7 +15,9 @@ import shutil
 from datetime import datetime
 from unittest.mock import Mock, AsyncMock
 
-# Add src to path
+# Add project root to path (database package is now at root)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add src to path for other modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from database import DatabaseManager

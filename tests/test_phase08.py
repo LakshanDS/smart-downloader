@@ -259,7 +259,13 @@ class TestUploadManager:
     @pytest.mark.asyncio
     async def test_stop_processor(self, upload_manager):
         """Test stopping upload processor."""
-        upload_manager.current_task = Mock()
+        # Create an async mock task that raises CancelledError when awaited
+        async def mock_task_coro():
+            raise asyncio.CancelledError()
+
+        mock_task = asyncio.create_task(mock_task_coro())
+        upload_manager.current_task = mock_task
+
         await upload_manager.stop_processor()
 
         assert upload_manager._stop_event.is_set()

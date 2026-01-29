@@ -69,7 +69,7 @@ class UploaderBot:
 
     def is_connected(self) -> bool:
         """Check if userbot is connected and authorized."""
-        return self.client and self.client.is_connected() and self._authorized
+        return bool(self.client and self.client.is_connected() and self._authorized)
 
     def is_authorized(self) -> bool:
         """Check if userbot is authorized."""
