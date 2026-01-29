@@ -69,7 +69,7 @@ async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAUL
         keyboard = [
             [InlineKeyboardButton("➕ New Download", callback_data='dashboard_new_download')],
             [
-                InlineKeyboardButton("📥 Downloads", callback_data='dashboard_downloads'),
+                InlineKeyboardButton("📥 Downloads", callback_data='dm_open'),
                 InlineKeyboardButton("⏰ Queue", callback_data='dashboard_queue')
             ],
             [
@@ -92,25 +92,7 @@ async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAUL
         )
         return
 
-    if action == 'dashboard_downloads':
-        active = db.get_active_download()
-        queue_summary = db.get_queue_summary()
-
-        if not active and queue_summary['pending'] == 0:
-            msg = "✅ No active downloads\n\nQueue is empty."
-        else:
-            msg = "📥 Downloads\n\n"
-            if active:
-                msg += f"🔄 Active: {active['title'] or 'Processing...'}\n"
-                msg += f"Progress: {active['progress']}%\n"
-            if queue_summary['pending'] > 0:
-                msg += f"\n⏳ In Queue: {queue_summary['pending']} items"
-
-        keyboard = [[InlineKeyboardButton("◀️ Back", callback_data='dashboard_back')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(msg, reply_markup=reply_markup)
-
-    elif action == 'dashboard_files':
+    if action == 'dashboard_files':
         keyboard = [[InlineKeyboardButton("◀️ Back", callback_data='dashboard_back')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
@@ -162,3 +144,22 @@ async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAUL
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
+
+    # Download manager callbacks
+    elif action.startswith('dm_'):
+        from shared.state import queue_manager
+        from handlers.download_manager import (
+            show_download_manager,
+            handle_pause,
+            handle_resume,
+            handle_cancel
+        )
+
+        if action == 'dm_open' or action == 'dm_refresh':
+            await show_download_manager(update, context, db)
+        elif action.startswith('dm_pause_'):
+            await handle_pause(update, context, db, queue_manager)
+        elif action.startswith('dm_resume_'):
+            await handle_resume(update, context, db, queue_manager)
+        elif action.startswith('dm_cancel_'):
+            await handle_cancel(update, context, db, queue_manager)

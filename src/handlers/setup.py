@@ -1,5 +1,6 @@
 """Setup wizard handlers - initial bot configuration."""
 
+import asyncio
 import logging
 import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -57,7 +58,7 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("➕ New Download", callback_data='dashboard_new_download')],
         [
-            InlineKeyboardButton("📥 Downloads", callback_data='dashboard_downloads'),
+            InlineKeyboardButton("📥 Downloads", callback_data='dm_open'),
             InlineKeyboardButton("⏰ Queue", callback_data='dashboard_queue')
         ],
         [
@@ -165,7 +166,7 @@ async def handle_verify_code(update: Update, context: ContextTypes.DEFAULT_TYPE)
             keyboard = [
                 [InlineKeyboardButton("➕ New Download", callback_data='dashboard_new_download')],
                 [
-                    InlineKeyboardButton("📥 Downloads", callback_data='dashboard_downloads'),
+                    InlineKeyboardButton("📥 Downloads", callback_data='dm_open'),
                     InlineKeyboardButton("⏰ Queue", callback_data='dashboard_queue')
                 ],
                 [
@@ -188,7 +189,7 @@ async def handle_verify_code(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
 
             import shared.state as state
-            from queue_manager import QueueManager
+            from src.queue_manager import QueueManager
             state.queue_manager = QueueManager(db=db, bot=context.bot)
             asyncio.create_task(state.queue_manager.start())
 

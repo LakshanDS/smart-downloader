@@ -19,13 +19,36 @@ class VideoDetector:
     Filters out ads, previews, and promotional content.
     """
 
-    def __init__(self):
-        """Initialize video detector."""
+    # Quality size thresholds (bytes) - matching Telegram 2GB limit
+    MAX_1080P_SIZE = 2 * 1024 * 1024 * 1024   # 2 GB - Telegram max, skip above
+    MAX_720P_SIZE = 1 * 1024 * 1024 * 1024    # 1 GB - if targeting 720p max
+    TARGET_1080P_SIZE = 800_000_000  # 800 MB - ideal 1080p target
+
+    def __init__(self, max_quality: str = '1080p'):
+        """
+        Initialize video detector.
+
+        Args:
+            max_quality: Maximum quality to accept ('1080p', '720p', '480p')
+        """
         self.ad_keywords = ['ad', 'advertisement', 'promo', 'preview', 'teaser',
                            'preroll', 'midroll', 'overlay', 'splash',
                            'commercial', 'sponsor', 'banner']
         self.min_duration = 30  # Seconds - minimum to not be an ad
         self.min_size = 1024 * 500  # 500 KB minimum
+
+        # Set max file size based on quality preference
+        self.max_quality = max_quality
+        if max_quality == '1080p':
+            self.max_size = self.MAX_1080P_SIZE
+        elif max_quality == '720p':
+            self.max_size = self.MAX_720P_SIZE
+        elif max_quality == '480p':
+            self.max_size = 500_000_000  # 500 MB
+        else:
+            self.max_size = self.MAX_1080P_SIZE
+
+        logger.info(f"VideoDetector initialized with max_quality={max_quality}, max_size={self.max_size//(1024**3)}GB")
 
     def filter_videos(self, candidates: List[Dict]) -> Optional[Dict]:
         """
@@ -53,6 +76,11 @@ class VideoDetector:
                 logger.info(f"Filtered out likely ad: {candidate['url'][:60]}")
                 continue
 
+            # Check file size (skip files larger than max quality)
+            if self._is_too_large(candidate):
+                logger.info(f"Filtered out: file too large for {self.max_quality} ({candidate.get('size', 0)/(1024**2):.0f}MB)")
+                continue
+
             valid_videos.append(candidate)
 
         if not valid_videos:
@@ -66,7 +94,8 @@ class VideoDetector:
             reverse=True
         )[0]
 
-        logger.info(f"Selected best video: {best_video['url'][:60]}")
+        size_mb = best_video.get('size', 0) / (1024 * 1024)
+        logger.info(f"Selected best video: {size_mb:.0f}MB - {best_video['url'][:60]}")
         return best_video
 
     def _is_video(self, candidate: Dict) -> bool:
@@ -116,6 +145,30 @@ class VideoDetector:
         duration = candidate.get('duration', 0)
         if duration > 0 and duration < self.min_duration:
             logger.debug(f"Duration too short: {duration}s")
+            return True
+
+        return False
+
+    def _is_too_large(self, candidate: Dict) -> bool:
+        """
+        Check if file is larger than max quality setting.
+
+        Args:
+            candidate: Video candidate dictionary
+
+        Returns:
+            True if file exceeds max quality size threshold
+        """
+        size = candidate.get('size', 0)
+
+        # Only check if we have size info
+        if size <= 0:
+            return False
+
+        # Check against max size threshold
+        if size > self.max_size:
+            size_mb = size / (1024 * 1024)
+            logger.info(f"File {size_mb:.0f}MB exceeds max {self.max_quality} size ({self.max_size//(1024**3)}GB)")
             return True
 
         return False

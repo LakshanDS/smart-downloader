@@ -40,6 +40,7 @@ class QueueManager:
         self.current_download: Optional[dict] = None
         self.progress_message_id: Optional[int] = None
         self.progress_chat_id: Optional[int] = None
+        self.paused: bool = False
 
     async def start(self):
         """Start the queue processing loop."""
@@ -48,20 +49,30 @@ class QueueManager:
 
         while self.running:
             try:
+                # Check if paused
+                if self.paused:
+                    await asyncio.sleep(5)
+                    continue
+
                 # Check if there's an active download
                 active = self.db.get_active_download()
 
                 if not active:
-                    # Get next pending
+                    # Get next pending (skip paused items)
                     pending = self.db.get_next_pending()
 
-                    if pending:
+                    if pending and not self.db.is_paused(pending['id']):
                         logger.info(f"Processing download: {pending['id']}")
                         await self._process_download(pending)
                     else:
                         # No downloads, idle
                         await asyncio.sleep(5)
                 else:
+                    # Check if current download is paused
+                    if self.db.is_paused(active['id']):
+                        await asyncio.sleep(5)
+                        continue
+
                     # Update progress display
                     await self._update_progress_display(active)
                     await asyncio.sleep(self.PROGRESS_INTERVAL)
@@ -363,3 +374,41 @@ Retried {len(self.RETRY_DELAYS)} times. Giving up.
             await self.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
         except Exception as e:
             logger.error(f"Failed to send failure message: {e}")
+
+    # === Pause/Resume/Cancel Operations ===
+
+    async def pause_download(self, download_id: int, reason: str = "Paused by user") -> bool:
+        """Pause a download."""
+        # If it's the current download, pause the queue
+        if self.current_download and self.current_download['id'] == download_id:
+            self.paused = True
+
+        self.db.set_paused(download_id, True, reason)
+        logger.info(f"Paused download: {download_id}")
+        return True
+
+    async def resume_download(self, download_id: int) -> bool:
+        """Resume a paused download."""
+        # If we paused the whole queue for this download, resume it
+        if self.paused and self.current_download and self.current_download['id'] == download_id:
+            self.paused = False
+
+        self.db.set_paused(download_id, False)
+        logger.info(f"Resumed download: {download_id}")
+        return True
+
+    async def cancel_download(self, download_id: int) -> bool:
+        """Cancel a download."""
+        # If it's the current download, stop processing it
+        if self.current_download and self.current_download['id'] == download_id:
+            self.current_download = None
+            if self.paused:
+                self.paused = False
+
+        self.db.cancel_download(download_id)
+        logger.info(f"Cancelled download: {download_id}")
+        return True
+
+    def get_queue_position(self, download_id: int) -> tuple[int, int]:
+        """Get (position, total) for queue display."""
+        return self.db.get_queue_position(download_id)

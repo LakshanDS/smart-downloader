@@ -105,7 +105,7 @@ async def startup_queue_manager(app: Application):
         print("✓ Bot is set up. Initializing queue manager...", file=sys.stderr)
         logger.info("Bot is set up. Initializing queue manager...")
         try:
-            from queue_manager import QueueManager
+            from src.queue_manager import QueueManager
             state.queue_manager = QueueManager(db=db, bot=app.bot)
             logger.info(f"Queue manager assigned to state.queue_manager: {state.queue_manager}")
             asyncio.create_task(state.queue_manager.start())
@@ -138,6 +138,7 @@ def create_application() -> Application:
     app.add_handler(CallbackQueryHandler(handle_setup_callback, pattern='^setup_initiate$'))
     app.add_handler(CallbackQueryHandler(handle_queue_callback, pattern='^(dashboard_queue|queue_)'))
     app.add_handler(CallbackQueryHandler(handle_dashboard_callback, pattern='^dashboard_'))
+    app.add_handler(CallbackQueryHandler(handle_dashboard_callback, pattern='^dm_'))
     app.add_handler(CallbackQueryHandler(handle_userbot_setup_callback, pattern='^userbot_cancel$'))
     app.add_handler(CallbackQueryHandler(handle_userbot_confirm, pattern='^userbot_confirm$'))
 

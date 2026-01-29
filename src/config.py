@@ -36,6 +36,17 @@ ARIA2C_MAX_CONCURRENT = int(os.getenv('ARIA2C_MAX_CONCURRENT', '3'))
 DOWNLOAD_DIR = os.getenv('DOWNLOAD_DIR', '/tmp/downloads')
 YTDLP_FORMAT = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
 
+# Video quality settings for Playwright crawler
+# Options: '1080p', '720p', '480p' - files larger than these thresholds will be skipped
+MAX_VIDEO_QUALITY = os.getenv('MAX_VIDEO_QUALITY', '1080p')
+
+# Quality size thresholds (bytes)
+QUALITY_SIZE_LIMITS = {
+    '1080p': 2 * 1024 * 1024 * 1024,  # 2 GB (Telegram limit)
+    '720p': 900_000_000,     # 900 MB
+    '480p': 500_000_000,     # 500 MB
+}
+
 # Playwright / Crawler settings
 BROWSER_HEADLESS = os.getenv('BROWSER_HEADLESS', 'true').lower() == 'true'
 BROWSER_TIMEOUT = int(os.getenv('BROWSER_TIMEOUT', '30000'))  # 30 seconds

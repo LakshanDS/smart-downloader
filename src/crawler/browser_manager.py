@@ -26,18 +26,18 @@ class BrowserManager:
         self.headless = headless
         self.playwright = None
 
-    def _initialize_browser(self):
+    async def _initialize_browser(self):
         """Launch browser once and reuse."""
         if self.browser is not None:
             return
 
         try:
-            from playwright.sync_api import sync_playwright
+            from playwright.async_api import async_playwright
 
-            self.playwright = sync_playwright().start()
+            self.playwright = await async_playwright().start()
 
             # Launch browser with RAM optimization
-            self.browser = self.playwright.chromium.launch(
+            self.browser = await self.playwright.chromium.launch(
                 headless=self.headless,
                 args=[
                     '--disable-dev-shm-usage',  # Reduce RAM
@@ -58,7 +58,7 @@ class BrowserManager:
             logger.error(f"Failed to launch browser: {e}")
             raise RuntimeError(f"Browser launch failed: {str(e)}")
 
-    def get_context(self, chat_id: int):
+    async def get_context(self, chat_id: int):
         """
         Get or create context for a chat.
 
@@ -68,10 +68,10 @@ class BrowserManager:
         Returns:
             Browser context
         """
-        self._initialize_browser()
+        await self._initialize_browser()
 
         if chat_id not in self.contexts:
-            self.contexts[chat_id] = self.browser.new_context()
+            self.contexts[chat_id] = await self.browser.new_context()
             logger.info(f"Created context for chat {chat_id}")
 
         return self.contexts[chat_id]
@@ -88,11 +88,23 @@ class BrowserManager:
             del self.contexts[chat_id]
             logger.info(f"Cleaned up context for chat {chat_id}")
 
-    def cleanup_all(self):
+    async def cleanup_context(self, chat_id: int):
+        """
+        Close context when done.
+
+        Args:
+            chat_id: User's chat ID
+        """
+        if chat_id in self.contexts:
+            await self.contexts[chat_id].close()
+            del self.contexts[chat_id]
+            logger.info(f"Cleaned up context for chat {chat_id}")
+
+    async def cleanup_all(self):
         """Close all contexts and browser."""
         for context in self.contexts.values():
             try:
-                context.close()
+                await context.close()
             except Exception as e:
                 logger.warning(f"Error closing context: {e}")
 
@@ -100,7 +112,7 @@ class BrowserManager:
 
         if self.browser:
             try:
-                self.browser.close()
+                await self.browser.close()
             except Exception as e:
                 logger.warning(f"Error closing browser: {e}")
             finally:
@@ -108,7 +120,7 @@ class BrowserManager:
 
         if self.playwright:
             try:
-                self.playwright.stop()
+                await self.playwright.stop()
             except Exception as e:
                 logger.warning(f"Error stopping playwright: {e}")
             finally:
@@ -117,5 +129,9 @@ class BrowserManager:
         logger.info("Browser cleanup complete")
 
     def __del__(self):
-        """Cleanup on object deletion."""
-        self.cleanup_all()
+        """Cleanup on object deletion (sync fallback)."""
+        # Note: Can't await in __del__, just clear references
+        # Real cleanup should be done via explicit await cleanup_all()
+        self.contexts.clear()
+        self.browser = None
+        self.playwright = None

@@ -1,3 +1,0 @@
-"""
-Tests Package - Smart Downloader
-"""

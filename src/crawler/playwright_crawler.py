@@ -10,9 +10,14 @@ import hashlib
 import logging
 from typing import Optional, Dict
 
-from browser_manager import BrowserManager
-from network_monitor import NetworkMonitor
-from video_detector import VideoDetector
+from .browser_manager import BrowserManager
+from .network_monitor import NetworkMonitor
+from .video_detector import VideoDetector
+
+try:
+    from ..config import MAX_VIDEO_QUALITY
+except ImportError:
+    from config import MAX_VIDEO_QUALITY
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +35,19 @@ class PlaywrightCrawler:
     Finds real video URLs from pages that don't support yt-dlp.
     """
 
-    def __init__(self, browser_manager: BrowserManager):
-        """Initialize crawler."""
+    def __init__(self, browser_manager: BrowserManager, max_quality: str = None):
+        """
+        Initialize crawler.
+
+        Args:
+            browser_manager: Browser manager instance
+            max_quality: Maximum quality to accept ('1080p', '720p', '480p')
+        """
         self.browser = browser_manager
-        self.detector = VideoDetector()
+        quality_setting = max_quality or MAX_VIDEO_QUALITY
+        self.detector = VideoDetector(max_quality=quality_setting)
         self.monitor = NetworkMonitor()
+        logger.info(f"PlaywrightCrawler initialized with max_quality={quality_setting}")
 
     async def find_video_url(self, url: str, chat_id: int) -> Optional[Dict]:
         """
@@ -47,8 +60,8 @@ class PlaywrightCrawler:
         Returns:
             Dictionary with video info, or None if not found
         """
-        context = self.browser.get_context(chat_id)
-        page = context.new_page()
+        context = await self.browser.get_context(chat_id)
+        page = await context.new_page()
 
         try:
             # Set up network monitoring
@@ -95,7 +108,8 @@ class PlaywrightCrawler:
 
         finally:
             self.monitor.reset()
-            self.browser.cleanup_context(chat_id)
+            await self.browser.cleanup_context(chat_id)
+            await page.close()
 
     async def _wait_for_video_player(self, page) -> None:
         """
@@ -127,6 +141,16 @@ class PlaywrightCrawler:
 
         # Wait a bit for dynamic content
         await asyncio.sleep(2)
+
+        # Also try clicking play button if present
+        try:
+            play_button = await page.query_selector('button[class*="play"], .play-btn, [aria-label*="play"]')
+            if play_button:
+                await play_button.click()
+                await asyncio.sleep(2)
+                logger.debug("Clicked play button to trigger video load")
+        except:
+            pass
 
     async def probe_video(self, url: str) -> Dict:
         """

@@ -65,6 +65,17 @@ class DatabaseManager:
                 cursor.execute("ALTER TABLE downloads ADD COLUMN priority INTEGER DEFAULT 0")
                 logger.info("Added priority column to downloads table")
 
+            # Migration: Add pause/resume columns if missing
+            if 'can_pause' not in columns:
+                cursor.execute("ALTER TABLE downloads ADD COLUMN can_pause BOOLEAN DEFAULT 1")
+                logger.info("Added can_pause column to downloads table")
+            if 'paused' not in columns:
+                cursor.execute("ALTER TABLE downloads ADD COLUMN paused BOOLEAN DEFAULT 0")
+                logger.info("Added paused column to downloads table")
+            if 'pause_reason' not in columns:
+                cursor.execute("ALTER TABLE downloads ADD COLUMN pause_reason TEXT")
+                logger.info("Added pause_reason column to downloads table")
+
             conn.commit()
 
             # Seed categories if empty
@@ -732,3 +743,76 @@ class DatabaseManager:
             """, (priority, datetime.now().isoformat(), item_id))
             conn.commit()
             return cursor.rowcount > 0
+
+    # === Pause/Resume/Cancel Operations ===
+
+    def set_paused(self, download_id: int, paused: bool = True, reason: str = None) -> bool:
+        """Set paused state for a download."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                UPDATE downloads
+                SET paused = ?, pause_reason = ?, updated_at = ?
+                WHERE id = ?
+            """, (1 if paused else 0, reason, datetime.now().isoformat(), download_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def is_paused(self, download_id: int) -> bool:
+        """Check if download is paused."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT paused FROM downloads WHERE id = ?", (download_id,))
+            row = cursor.fetchone()
+            return bool(row[0]) if row else False
+
+    def cancel_download(self, download_id: int) -> bool:
+        """Cancel a download (mark as failed with user_cancelled status)."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                UPDATE downloads
+                SET status = 'failed', error_message = 'Cancelled by user', updated_at = ?
+                WHERE id = ? AND status NOT IN ('completed', 'failed')
+            """, (datetime.now().isoformat(), download_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def get_all_active_downloads(self) -> List[Dict]:
+        """Get all active downloads (pending, downloading, paused)."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT * FROM downloads
+                WHERE status IN ('pending', 'downloading')
+                ORDER BY
+                    CASE WHEN paused = 1 THEN 1 ELSE 0 END,
+                    priority DESC,
+                    added_date ASC
+            """)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_queue_snapshot_count(self) -> int:
+        """Get total count including active and pending (for queue counter display)."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT COUNT(*) FROM downloads
+                WHERE status IN ('pending', 'downloading')
+            """)
+            return cursor.fetchone()[0]
+
+    def get_queue_position(self, download_id: int) -> tuple[int, int]:
+        """Get (position, total) for queue display."""
+        with self.get_connection() as conn:
+            # Get total active items
+            cursor = conn.execute("""
+                SELECT COUNT(*) FROM downloads
+                WHERE status IN ('pending', 'downloading')
+            """)
+            total = cursor.fetchone()[0]
+
+            # Get position (1-indexed)
+            cursor.execute("""
+                SELECT COUNT(*) + 1 FROM downloads d
+                WHERE d.status IN ('pending', 'downloading')
+                  AND d.added_date < (SELECT added_date FROM downloads WHERE id = ?)
+            """, (download_id,))
+            position = cursor.fetchone()[0]
+
+            return (position, total) if total > 0 else (0, 0)
