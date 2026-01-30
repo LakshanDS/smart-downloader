@@ -49,7 +49,7 @@ class TorrentManager:
             return False
 
         try:
-            version = self.aria.get_global_stat()
+            version = self.aria.get_stats()
             logger.info(f"aria2c connected: version available")
             return True
         except Exception as e:

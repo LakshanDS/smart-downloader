@@ -6,19 +6,15 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from shared.state import db, userbot_setup
-from shared.auth import check_authorized
+from shared.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
 
+@require_auth
 async def handle_userbot_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /userbot_setup command - interactive userbot configuration."""
     chat_id = update.effective_chat.id
-
-    if not check_authorized(chat_id):
-        from handlers.downloads import handle_non_owner
-        await handle_non_owner(update, context)
-        return
 
     logger.info(f"Starting userbot setup for chat_id={chat_id}")
     userbot_setup[chat_id] = {'step': 1}

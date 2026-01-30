@@ -55,30 +55,8 @@ async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Update chat activity
     db.log_activity(user_id, chat_id, 'bot_start')
 
-    keyboard = [
-        [InlineKeyboardButton("➕ New Download", callback_data='dashboard_new_download')],
-        [
-            InlineKeyboardButton("📥 Downloads", callback_data='dm_open'),
-            InlineKeyboardButton("⏰ Queue", callback_data='dashboard_queue')
-        ],
-        [
-            InlineKeyboardButton("📁 My Files", callback_data='dashboard_files'),
-            InlineKeyboardButton("🔍 Search", callback_data='dashboard_search')
-        ],
-        [
-            InlineKeyboardButton("⭐ Favorites", callback_data='dashboard_favorites'),
-            InlineKeyboardButton("ℹ️ Help", callback_data='dashboard_help')
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text(
-        "🎬 *Smart Downloader*\n\n"
-        "Your personal media server using Telegram as storage.\n\n"
-        "💡 Send a link or use the button below!",
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
+    from handlers.dashboard import show_main_dashboard
+    await show_main_dashboard(update, context)
 
 
 async def handle_setup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -129,8 +107,6 @@ async def handle_setup_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def handle_verify_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle verification code from user."""
-    from shared.state import queue_manager
-
     chat_id = update.effective_chat.id
 
     if chat_id not in pending_verifications:
@@ -163,35 +139,15 @@ async def handle_verify_code(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
             del pending_verifications[chat_id]
 
-            keyboard = [
-                [InlineKeyboardButton("➕ New Download", callback_data='dashboard_new_download')],
-                [
-                    InlineKeyboardButton("📥 Downloads", callback_data='dm_open'),
-                    InlineKeyboardButton("⏰ Queue", callback_data='dashboard_queue')
-                ],
-                [
-                    InlineKeyboardButton("📁 My Files", callback_data='dashboard_files'),
-                    InlineKeyboardButton("🔍 Search", callback_data='dashboard_search')
-                ],
-                [
-                    InlineKeyboardButton("⭐ Favorites", callback_data='dashboard_favorites'),
-                    InlineKeyboardButton("ℹ️ Help", callback_data='dashboard_help')
-                ]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-
+            from handlers.dashboard import show_main_dashboard
             await update.message.reply_text(
-                "🎬 *Smart Downloader*\n\n"
-                "Your personal media server using Telegram as storage.\n\n"
-                "💡 Send a link or use the button below!",
-                reply_markup=reply_markup,
+                "✅ Setup complete! Restarting bot will start the pooler.\n\n"
+                "Use /start to see the dashboard.",
                 parse_mode='Markdown'
             )
 
-            import shared.state as state
-            from src.queue_manager import QueueManager
-            state.queue_manager = QueueManager(db=db, bot=context.bot)
-            asyncio.create_task(state.queue_manager.start())
+            # Note: Pooler will start on next bot restart via bot.py startup_pooler()
+            logger.info("Setup complete. Restart bot to start pooler process.")
 
         except Exception as e:
             logger.error(f"Setup failed: {e}")

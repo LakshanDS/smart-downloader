@@ -19,7 +19,7 @@ from telegram.ext import (
     filters
 )
 
-from config import BOT_TOKEN, LOG_LEVEL
+from config import BOT_TOKEN, LOG_LEVEL, DATABASE_PATH
 from shared.state import db
 
 # Import handlers
@@ -34,12 +34,11 @@ from handlers import (
     handle_userbot_setup_callback,
     handle_userbot_setup_text,
     handle_userbot_confirm,
-    handle_help,
+    handle_help_command,
+    handle_help_callback,
     handle_status,
-    handle_download,
-    handle_torrent,
-    handle_link_submission,
-    handle_loglevel,
+    handle_url_submission,
+    handle_new_url_done,
 )
 
 # Setup logs directory
@@ -95,29 +94,68 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
             pass
 
 
-async def startup_queue_manager(app: Application):
-    """Initialize queue manager on startup if bot is already set up."""
+async def startup_pooler(app: Application):
+    """Initialize pooler process on startup if bot is already set up."""
     import shared.state as state
+    import os
 
     print("✓ Bot application initialized", file=sys.stderr)
 
     if db.is_locked():
-        print("✓ Bot is set up. Initializing queue manager...", file=sys.stderr)
-        logger.info("Bot is set up. Initializing queue manager...")
+        print("✓ Bot is set up. Starting pooler process...", file=sys.stderr)
+        logger.info("Bot is set up. Starting pooler process...")
         try:
-            from src.queue_manager import QueueManager
-            state.queue_manager = QueueManager(db=db, bot=app.bot)
-            logger.info(f"Queue manager assigned to state.queue_manager: {state.queue_manager}")
-            asyncio.create_task(state.queue_manager.start())
-            print("✓ Queue manager started", file=sys.stderr)
-        except ImportError:
-            print("⚠ QueueManager not implemented yet (coming in Phase 3)", file=sys.stderr)
-            logger.warning("QueueManager not implemented yet (coming in Phase 3)")
+            from src.pooler.pooler_runner import start_pooler_process
+
+            # Get config from environment or defaults
+            db_path = DATABASE_PATH
+            download_dir = os.getenv('DOWNLOAD_DIR', '/tmp/downloads')
+            aria2c_rpc_url = os.getenv('ARIA2C_RPC_URL', 'http://localhost:6800/jsonrpc')
+            poll_interval = int(os.getenv('POOLER_POLL_INTERVAL', '1'))
+
+            # Start pooler process
+            pooler = start_pooler_process(
+                db_path=db_path,
+                bot_token=BOT_TOKEN,
+                userbot_api_id=os.getenv('USERBOT_API_ID'),
+                userbot_api_hash=os.getenv('USERBOT_API_HASH'),
+                userbot_phone=os.getenv('USERBOT_PHONE'),
+                download_dir=download_dir,
+                aria2c_rpc_url=aria2c_rpc_url,
+                poll_interval=poll_interval
+            )
+
+            state.pooler = pooler
+            logger.info(f"Pooler started (PID: {pooler.get_pid()})")
+            print(f"✓ Pooler started (PID: {pooler.get_pid()})", file=sys.stderr)
+
+        except Exception as e:
+            print(f"⚠ Failed to start pooler: {e}", file=sys.stderr)
+            logger.error(f"Failed to start pooler: {e}", exc_info=True)
     else:
         print("⚠ Bot not set up. Waiting for /setup command...", file=sys.stderr)
         logger.info("Bot not set up. Waiting for /setup command...")
 
     print("✓ Bot started successfully. Polling for messages...", file=sys.stderr)
+
+
+async def shutdown_pooler(app: Application):
+    """Shutdown pooler process on bot shutdown."""
+    import shared.state as state
+
+    print("Shutting down pooler...", file=sys.stderr)
+    logger.info("Shutting down pooler...")
+
+    try:
+        from src.pooler.pooler_runner import stop_pooler_process
+        stop_pooler_process(timeout=30)
+        print("✓ Pooler stopped", file=sys.stderr)
+        logger.info("Pooler stopped")
+    except Exception as e:
+        print(f"⚠ Failed to stop pooler: {e}", file=sys.stderr)
+        logger.error(f"Failed to stop pooler: {e}")
+
+    db.close()
 
 
 def create_application() -> Application:
@@ -128,11 +166,8 @@ def create_application() -> Application:
     app.add_handler(CommandHandler("start", handle_start))
     app.add_handler(CommandHandler("setup", handle_setup))
     app.add_handler(CommandHandler("userbot_setup", handle_userbot_setup))
-    app.add_handler(CommandHandler("help", handle_help))
-    app.add_handler(CommandHandler("download", handle_download))
-    app.add_handler(CommandHandler("torrent", handle_torrent))
+    app.add_handler(CommandHandler("help", handle_help_command))
     app.add_handler(CommandHandler("status", handle_status))
-    app.add_handler(CommandHandler("loglevel", handle_loglevel))
 
     # Callbacks
     app.add_handler(CallbackQueryHandler(handle_setup_callback, pattern='^setup_initiate$'))
@@ -141,9 +176,11 @@ def create_application() -> Application:
     app.add_handler(CallbackQueryHandler(handle_dashboard_callback, pattern='^dm_'))
     app.add_handler(CallbackQueryHandler(handle_userbot_setup_callback, pattern='^userbot_cancel$'))
     app.add_handler(CallbackQueryHandler(handle_userbot_confirm, pattern='^userbot_confirm$'))
+    app.add_handler(CallbackQueryHandler(handle_new_url_done, pattern='^newurl_done$'))
+    app.add_handler(CallbackQueryHandler(handle_help_callback, pattern='^help_'))
 
     # Messages (order matters - most common first)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link_submission))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_url_submission))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_userbot_setup_text))
     app.add_handler(MessageHandler(filters.Regex(r'^\d{6}$'), handle_verify_code))
 
@@ -159,7 +196,8 @@ def main():
     print("=" * 50, file=sys.stderr)
 
     app = create_application()
-    app.post_init = startup_queue_manager
+    app.post_init = startup_pooler
+    app.post_shutdown = shutdown_pooler
 
     logger.info("Starting bot...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)

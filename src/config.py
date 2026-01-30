@@ -56,5 +56,12 @@ UPLOADER_API_ID = os.getenv('UPLOADER_API_ID')
 UPLOADER_API_HASH = os.getenv('UPLOADER_API_HASH')
 UPLOADER_PHONE = os.getenv('UPLOADER_PHONE')
 
+# Pooler configuration
+POOLER_POLL_INTERVAL = int(os.getenv('POOLER_POLL_INTERVAL', '1'))  # seconds
+MAX_CONCURRENT_DOWNLOADS = int(os.getenv('MAX_CONCURRENT_DOWNLOADS', '1'))
+MAX_CONCURRENT_UPLOADS = int(os.getenv('MAX_CONCURRENT_UPLOADS', '1'))
+DOWNLOAD_TIMEOUT = int(os.getenv('DOWNLOAD_TIMEOUT', '3600'))  # 1 hour
+UPLOAD_TIMEOUT = int(os.getenv('UPLOAD_TIMEOUT', '1800'))  # 30 minutes
+
 # Logging
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')

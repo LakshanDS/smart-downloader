@@ -6,7 +6,10 @@ from config import DATABASE_PATH
 # Database instance
 db = DatabaseManager(DATABASE_PATH)
 
-# Queue manager instance (initialized at runtime)
+# Pooler process instance (initialized at runtime)
+pooler = None
+
+# Queue manager instance (deprecated - replaced by pooler)
 queue_manager = None
 
 # Setup verification: {chat_id: {'code': '123456', 'user_id': 123, 'username': 'abc', 'message_id': 123}}

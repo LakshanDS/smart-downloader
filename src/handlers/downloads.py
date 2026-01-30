@@ -1,357 +1,297 @@
-"""Download command handlers - /download, /torrent, /status, /help, link submission."""
+"""
+Download Manager Handler - Smart Downloader
+
+Shows active downloads with individual controls, progress, speed, ETA, and queue counter.
+"""
 
 import logging
-from urllib.parse import urlparse
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes
+import re
+from datetime import datetime
 
-from shared.state import db, link_submission_mode, userbot_setup
-import shared.state as state
-from shared.auth import check_authorized, InvalidURLError
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CallbackContext
+from telegram.error import BadRequest
+
+from database.manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_non_owner(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle messages from non-owners."""
-    await update.message.reply_text(
-        "❌ This bot is locked to another account.\n"
-        "You cannot use it."
-    )
+def clean_filename(title: str, max_length: int = 32) -> str:
+    """Clean filename: remove emojis, special chars, trim to max_length."""
+    if not title:
+        return "Unknown"
+
+    # Remove emojis and wide unicode chars
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        u"\U0001F900-\U0001F9FF"  # supplemental symbols
+        u"\U00002600-\U000026FF"
+        u"\U0000FE0F"
+        "]+", flags=re.UNICODE)
+    title = emoji_pattern.sub('', title)
+
+    # Remove special chars, keep alphanumeric, spaces, dots, dashes, underscores
+    title = re.sub(r'[^\w\s\.\-_]', '', title)
+
+    # Remove extra whitespace
+    title = ' '.join(title.split())
+
+    # Trim to max length
+    if len(title) > max_length:
+        title = title[:max_length] + '...'
+
+    result = title or "Unknown"
+
+    # Escape markdown special characters
+    for char in ['*', '_', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']:
+        result = result.replace(char, '\\' + char)
+
+    return result
 
 
-def detect_source_type(url: str) -> str:
-    """Detect download source type from URL."""
-    if url.startswith('magnet:?'):
-        return 'torrent'
-    elif url.startswith(('http://', 'https://')):
-        return 'direct'
+def format_speed(speed_bytes: float) -> str:
+    """Format speed to human readable."""
+    if not speed_bytes:
+        return "0.00 MB/s"
+    speed_mb = speed_bytes / (1024 * 1024)
+    return f"{speed_mb:.2f} MB/s"
+
+
+def format_size(size_bytes: int) -> str:
+    """Format size to human readable."""
+    if not size_bytes:
+        return "Unknown"
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.2f} TB"
+
+
+def format_eta(seconds: int) -> str:
+    """Format ETA to human readable."""
+    if not seconds or seconds <= 0:
+        return "Calculating..."
+    if seconds < 60:
+        return f"{seconds}s"
+    elif seconds < 3600:
+        mins = seconds // 60
+        secs = seconds % 60
+        return f"{mins}m {secs}s"
     else:
-        raise InvalidURLError("Unknown URL format")
+        hours = seconds // 3600
+        mins = (seconds % 3600) // 60
+        return f"{hours}h {mins}m"
 
 
-async def handle_link_submission(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle link submission when in new download mode."""
-    chat_id = update.effective_chat.id
-    text = update.message.text.strip()
+def create_progress_bar(progress: int, width: int = 20) -> str:
+    """Create visual progress bar."""
+    filled = int(width * progress / 100)
+    bar = '█' * filled + '░' * (width - filled)
+    return f"[{bar}]"
 
-    # Skip if userbot setup is active (let userbot handler handle it)
-    if chat_id in userbot_setup:
-        logger.debug(f"Link submission skipped: userbot setup is active for chat_id={chat_id}")
-        return
 
-    logger.debug(f"Link submission received: chat_id={chat_id}, text='{text[:50]}...', mode_active={chat_id in link_submission_mode}")
+def get_download_status_emoji(status: str, paused: bool = False) -> str:
+    """Get emoji for download status."""
+    if paused:
+        return "⏸️"
+    if status == 'downloading':
+        return "📥"
+    if status == 'uploading':
+        return "📤"
+    if status == 'pending':
+        return "⏳"
+    if status == 'completed':
+        return "✅"
+    if status == 'failed':
+        return "❌"
+    return "❓"
 
-    if chat_id not in link_submission_mode or not link_submission_mode[chat_id].get('active'):
-        logger.debug(f"Link submission ignored: not in submission mode")
-        return
 
-    if text.startswith('magnet:?'):
-        source = 'torrent'
-        display_name = "Torrent"
-    elif text.startswith(('http://', 'https://')):
-        source = 'direct'
-        display_name = "Direct Download"
-    else:
-        await update.message.reply_text(
-            "❌ *Invalid link format*\n\n"
-            "Please send:\n"
-            "• Magnet links (torrents)\n"
-            "• Direct URLs (videos, files, etc.)",
-            parse_mode='Markdown'
-        )
-        return
+async def show_download_manager(update: Update, context: CallbackContext, db: DatabaseManager):
+    """Show the download manager interface."""
+    query = update.callback_query
+    await query.answer()
 
-    try:
-        logger.debug(f"state.queue_manager check: {state.queue_manager}, type: {type(state.queue_manager)}")
-        if state.queue_manager is None:
-            logger.error("Queue manager is None! Cannot add link to queue.")
-            await update.message.reply_text("⚠️ Queue manager not initialized. Please restart the bot.")
-            return
+    # Get all active downloads
+    active_downloads = db.get_all_active_downloads()
 
-        logger.info(f"Adding to queue: url='{text[:50]}...', source={source}, chat_id={chat_id}")
-        queue_id = await state.queue_manager.add_to_queue(
-            url=text,
-            source=source,
-            chat_id=chat_id
-        )
-        logger.info(f"Added to queue: queue_id={queue_id}")
+    if not active_downloads:
+        message = """📥 **Download Manager**
+━━━━━━━━━━━━━━━━━━━━━
 
-        queue_summary = db.get_queue_summary()
-
-        keyboard = [[InlineKeyboardButton("✅ Done", callback_data='dashboard_new_download_done')]]
+Active downloads will appear here."""
+        keyboard = [
+            [InlineKeyboardButton("➕ New Download", callback_data="dashboard_new_download")],
+            [InlineKeyboardButton("🔄 Refresh", callback_data="dm_refresh")],
+            [InlineKeyboardButton("⬅️ Back", callback_data="dashboard_back")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await update.message.reply_text(
-            f"✅ *{display_name} added to queue!*\n\n"
-            f"Position in queue: {queue_summary['pending']}\n\n"
-            f"Send more links or click *Done*.",
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
-        )
-
-        db.log_activity(
-            update.effective_user.id,
-            chat_id,
-            'link_queued',
-            {'url': text[:50], 'source': source, 'queue_id': queue_id}
-        )
-
-    except Exception as e:
-        logger.error(f"Link queue error: {e}")
-        await update.message.reply_text(f"❌ Failed to add to queue: {str(e)}")
-
-
-async def handle_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /help command."""
-    if not check_authorized(update.effective_chat.id):
-        await handle_non_owner(update, context)
+        try:
+            await query.edit_message_text(text=message, parse_mode='Markdown', reply_markup=reply_markup)
+        except BadRequest as e:
+            if "not modified" not in str(e).lower():
+                logger.warning(f"BadRequest editing empty download manager: {e}")
         return
 
-    help_text = """
-📥 **Smart Downloader Help**
+    # Build message
+    message_lines = ["📥 **Download Manager**", "━━━━━━━━━━━━━━━━━━━━━"]
 
-**Download Commands:**
-`/torrent <magnet>` - Add torrent to queue
-`/download <url>` - Download direct link
+    # Show active download first
+    active = None
+    for dl in active_downloads:
+        if dl['status'] == 'downloading' or (dl['status'] == 'pending' and not active):
+            active = dl
+            break
 
-**Browse Commands:**
-`/myfiles` - View your library
-`/search <query>` - Search files
-`/favorites` - Watch later list
+    if active:
+        position, total = db.get_queue_position(active['id'])
+        paused = bool(active.get('paused', 0))
 
-**Management:**
-`/status` - Active downloads
+        status_emoji = get_download_status_emoji(active['status'], paused)
+        # Clean filename - remove emojis, symbols, trim to 32 chars
+        title = clean_filename(active.get('title') or active['url'])
 
-**All downloads are processed sequentially, one at a time.**
-    """
+        progress = active.get('progress', 0) or 0
+        dl_speed = active.get('download_speed') or 0
+        ul_speed = active.get('upload_speed') or 0
+        eta = active.get('eta_seconds') or 0
+        file_size = active.get('file_size')
 
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+        message_lines.extend([
+            f"",
+            f"**{status_emoji} Active Download** ({position}/{total})" if total > 0 else f"**{status_emoji} Active Download**",
+            f"📄 {title}",
+            f"{create_progress_bar(progress)} {progress}%",
+            f"⏱️ ETA: {format_eta(eta)}",
+            f"↓ {format_speed(dl_speed)} | ↑ {format_speed(ul_speed)}",
+        ])
 
+        if file_size:
+            downloaded = (file_size * progress / 100) if progress > 0 else 0
+            message_lines.append(f"📊 {format_size(int(downloaded))} / {format_size(file_size)}")
 
-async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show active download status."""
-    if not check_authorized(update.effective_chat.id):
-        await handle_non_owner(update, context)
-        return
+    # Show next item in queue only
+    queued = [dl for dl in active_downloads if dl['id'] != (active['id'] if active else None)]
+    if queued:
+        next_item = queued[0]
+        next_title = clean_filename(next_item.get('title') or next_item['url'])
+        position, total = db.get_queue_position(next_item['id'])
+        message_lines.extend([
+            f"",
+            f"**📋 Up Next:** ({position}/{total})",
+            f"⏳ {next_title}"
+        ])
+        if len(queued) > 1:
+            message_lines.append(f"... and {len(queued) - 1} more in queue")
 
-    active = db.get_active_download()
-    queue_summary = db.get_queue_summary()
+    message = "\n".join(message_lines)
 
-    if not active:
-        if queue_summary['pending'] == 0:
-            await update.message.reply_text("✅ No active downloads")
+    # Build keyboard
+    keyboard = []
+
+    if active:
+        download_id = active['id']
+        paused = bool(active.get('paused', 0))
+        can_pause = bool(active.get('can_pause', 1))  # Check if pauseable
+
+        if paused:
+            keyboard.append([
+                InlineKeyboardButton("▶ Resume", callback_data=f"dm_resume_{download_id}"),
+                InlineKeyboardButton("✕ Cancel", callback_data=f"dm_cancel_{download_id}")
+            ])
         else:
-            await update.message.reply_text(
-                f"⏳ {queue_summary['pending']} items in queue.\n"
-                f"Starting next download shortly..."
-            )
-        return
+            if active['status'] == 'downloading' and can_pause:
+                keyboard.append([
+                    InlineKeyboardButton("⏸ Pause", callback_data=f"dm_pause_{download_id}"),
+                    InlineKeyboardButton("✕ Cancel", callback_data=f"dm_cancel_{download_id}")
+                ])
+            else:
+                keyboard.append([
+                    InlineKeyboardButton("✕ Cancel", callback_data=f"dm_cancel_{download_id}")
+                ])
 
-    progress = active['progress']
-    dl_speed = active.get('download_speed', 0) or 0
-    ul_speed = active.get('upload_speed', 0) or 0
-    eta = active.get('eta_seconds', 0) or 0
+    # New download and refresh buttons
+    keyboard.append([
+        InlineKeyboardButton("➕ New Download", callback_data="dashboard_new_download"),
+        InlineKeyboardButton("🔄 Refresh", callback_data="dm_refresh")
+    ])
 
-    filled = int(20 * progress / 100)
-    bar = '█' * filled + '░' * (20 - filled)
+    # Back button - use universal dashboard_back callback
+    keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="dashboard_back")])
 
-    dl_str = f"{dl_speed:.2f} MB/s" if dl_speed else "0.00 MB/s"
-    ul_str = f"{ul_speed:.2f} MB/s" if ul_speed else "0.00 MB/s"
-
-    if eta > 0:
-        eta_mins = eta // 60
-        eta_secs = eta % 60
-        eta_str = f"{eta_mins}m {eta_secs}s"
-    else:
-        eta_str = "Calculating..."
-
-    status_text = "Downloading" if active['status'] == 'downloading' else "Uploading"
-
-    message = f"""
-📥 **Active Download:**
-
-{status_text} 1/{queue_summary['pending'] + 1}:
-📹 {active['title'] or 'Processing...'}
-[{bar}] {progress}%
-⏱️ ETA: {eta_str}
-↓ {dl_str} | ↑ {ul_str}
-    """
-
-    await update.message.reply_text(message, parse_mode='Markdown')
-
-
-async def handle_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /download command."""
-    if not check_authorized(update.effective_chat.id):
-        await handle_non_owner(update, context)
-        return
-
-    args = context.args
-    if not args:
-        await update.message.reply_text("Usage: /download <url>")
-        return
-
-    url = args[0]
-
-    if len(url) > 2048:
-        await update.message.reply_text("❌ URL too long (max 2048 characters)")
-        return
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     try:
-        result = urlparse(url)
-        if not all([result.scheme, result.netloc]):
-            raise ValueError("Invalid URL format")
-    except ValueError as e:
-        await update.message.reply_text(f"❌ Invalid URL: {str(e)}")
-        return
+        await query.edit_message_text(
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+    except BadRequest as e:
+        # Ignore "not modified" errors - content hasn't changed
+        if "not modified" not in str(e).lower():
+            logger.warning(f"BadRequest editing download manager: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to edit download manager message: {e}")
+
+
+async def handle_pause(update: Update, context: CallbackContext, db: DatabaseManager):
+    """Handle pause button - updates DB, pooler respects the change."""
+    query = update.callback_query
+    await query.answer("Pausing...")
 
     try:
-        source = detect_source_type(url)
+        download_id = int(query.data.split("_")[-1])
 
-        await update.message.delete()
-
-        if state.queue_manager is None:
-            await update.message.reply_text(
-                "⚠️ Queue manager not initialized. Please restart the bot."
-            )
+        # Check if download can be paused
+        download = db.get_download(download_id)
+        if not download or not bool(download.get('can_pause', 1)):
+            await query.answer("❌ This download cannot be paused")
             return
 
-        queue_id = await state.queue_manager.add_to_queue(
-            url=url,
-            source=source,
-            chat_id=update.effective_chat.id
-        )
-
-        queue_summary = db.get_queue_summary()
-
-        await update.message.reply_text(
-            f"✅ Added to queue!\n\n"
-            f"Source: {source.title()}\n"
-            f"Position in queue: {queue_summary['pending']}\n"
-            f"I'll start processing shortly..."
-        )
-
-        db.log_activity(
-            update.effective_user.id,
-            update.effective_chat.id,
-            'download_queued',
-            {'url': url, 'source': source, 'queue_id': queue_id}
-        )
-
-    except InvalidURLError as e:
-        await update.message.reply_text(f"❌ {str(e)}")
-    except Exception as e:
-        logger.error(f"Download queue error: {e}")
-        await update.message.reply_text(f"❌ Failed to add to queue: {str(e)}")
+        # Set paused flag in database - pooler will skip this item
+        db.set_paused(download_id, paused=True, reason="Paused by user via download manager")
+        logger.info(f"Paused download {download_id}")
+        await show_download_manager(update, context, db)
+    except (ValueError, IndexError) as e:
+        logger.error(f"Failed to parse download_id from callback data: {query.data}")
+        await query.answer("Error: Invalid download ID")
 
 
-async def handle_torrent(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /torrent command."""
-    if not check_authorized(update.effective_chat.id):
-        await handle_non_owner(update, context)
-        return
-
-    args = context.args
-    if not args:
-        await update.message.reply_text("Usage: /torrent <magnet_link>")
-        return
-
-    magnet = args[0]
-
-    if not magnet.startswith('magnet:?'):
-        await update.message.reply_text("❌ Invalid magnet link")
-        return
+async def handle_resume(update: Update, context: CallbackContext, db: DatabaseManager):
+    """Handle resume button - updates DB, pooler will pick it up."""
+    query = update.callback_query
+    await query.answer("Resuming...")
 
     try:
-        await update.message.delete()
-
-        if state.queue_manager is None:
-            await update.message.reply_text(
-                "⚠️ Queue manager not initialized. Please restart the bot."
-            )
-            return
-
-        queue_id = await state.queue_manager.add_to_queue(
-            url=magnet,
-            source='torrent',
-            chat_id=update.effective_chat.id
-        )
-
-        queue_summary = db.get_queue_summary()
-
-        await update.message.reply_text(
-            f"✅ Torrent added to queue!\n\n"
-            f"Position in queue: {queue_summary['pending']}"
-        )
-
-        db.log_activity(
-            update.effective_user.id,
-            update.effective_chat.id,
-            'torrent_queued',
-            {'magnet': magnet[:50], 'queue_id': queue_id}
-        )
-
-    except Exception as e:
-        logger.error(f"Torrent queue error: {e}")
-        await update.message.reply_text(f"❌ Failed to add torrent: {str(e)}")
+        download_id = int(query.data.split("_")[-1])
+        # Clear paused flag - pooler can now process this item
+        db.set_paused(download_id, paused=False)
+        logger.info(f"Resumed download {download_id}")
+        await show_download_manager(update, context, db)
+    except (ValueError, IndexError) as e:
+        logger.error(f"Failed to parse download_id from callback data: {query.data}")
+        await query.answer("Error: Invalid download ID")
 
 
-async def handle_loglevel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Change log level dynamically: /loglevel <DEBUG|INFO|WARNING|ERROR>"""
-    if not check_authorized(update.effective_chat.id):
-        await handle_non_owner(update, context)
-        return
+async def handle_cancel(update: Update, context: CallbackContext, db: DatabaseManager):
+    """Handle cancel button - marks as failed in DB."""
+    query = update.callback_query
+    await query.answer("Cancelling...")
 
-    import logging
-    from pathlib import Path
-
-    valid_levels = {'DEBUG', 'INFO', 'WARNING', 'ERROR'}
-
-    if not context.args:
-        current_level = logging.getLogger().getEffectiveLevel()
-        level_name = logging.getLevelName(current_level)
-        await update.message.reply_text(
-            f"📊 Current log level: *{level_name}*\n\n"
-            f"Usage: `/loglevel <level>`\n"
-            f"Valid levels: {', '.join(valid_levels)}",
-            parse_mode='Markdown'
-        )
-        return
-
-    requested_level = context.args[0].upper()
-
-    if requested_level not in valid_levels:
-        await update.message.reply_text(
-            f"❌ Invalid level. Use: {', '.join(valid_levels)}"
-        )
-        return
-
-    new_level = getattr(logging, requested_level)
-
-    # Update all handlers
-    root_logger = logging.getLogger()
-    root_logger.setLevel(new_level)
-    for handler in root_logger.handlers:
-        handler.setLevel(new_level)
-
-    # Also update .env file for persistence
-    env_path = Path(__file__).parent.parent.parent / ".env"
     try:
-        with open(env_path, 'r') as f:
-            lines = f.readlines()
-        with open(env_path, 'w') as f:
-            for line in lines:
-                if line.startswith('LOG_LEVEL='):
-                    f.write(f'LOG_LEVEL={requested_level}\n')
-                else:
-                    f.write(line)
-    except Exception as e:
-        logger.warning(f"Could not update .env file: {e}")
-
-    await update.message.reply_text(
-        f"✅ Log level changed to: *{requested_level}*\n\n"
-        f"Restart bot to apply to .env file (current session already updated).",
-        parse_mode='Markdown'
-    )
-    logger.info(f"Log level changed to {requested_level} by user {update.effective_user.id}")
+        download_id = int(query.data.split("_")[-1])
+        # Mark as failed/cancelled in database
+        db.cancel_download(download_id)
+        logger.info(f"Cancelled download {download_id}")
+        await show_download_manager(update, context, db)
+    except (ValueError, IndexError) as e:
+        logger.error(f"Failed to parse download_id from callback data: {query.data}")
+        await query.answer("Error: Invalid download ID")

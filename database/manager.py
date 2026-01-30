@@ -76,6 +76,14 @@ class DatabaseManager:
                 cursor.execute("ALTER TABLE downloads ADD COLUMN pause_reason TEXT")
                 logger.info("Added pause_reason column to downloads table")
 
+            # Migration: Add file_id and file_path columns for uploads
+            if 'file_id' not in columns:
+                cursor.execute("ALTER TABLE downloads ADD COLUMN file_id TEXT")
+                logger.info("Added file_id column to downloads table")
+            if 'file_path' not in columns:
+                cursor.execute("ALTER TABLE downloads ADD COLUMN file_path TEXT")
+                logger.info("Added file_path column to downloads table")
+
             conn.commit()
 
             # Seed categories if empty
@@ -816,3 +824,45 @@ class DatabaseManager:
             position = cursor.fetchone()[0]
 
             return (position, total) if total > 0 else (0, 0)
+
+    # === Pooler Queries ===
+
+    def get_next_pending_download(self) -> Optional[Dict]:
+        """Get next pending download, respecting priority and pause state."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM downloads
+                WHERE status = 'pending'
+                  AND paused = 0
+                ORDER BY priority DESC, added_date ASC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def get_next_completed_upload(self) -> Optional[Dict]:
+        """Get next completed download ready for upload."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM downloads
+                WHERE status = 'downloaded'
+                  AND file_id IS NULL
+                ORDER BY added_date ASC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+    def update_download_file_id(self, download_id: int, file_id: str,
+                                file_path: str = None):
+        """Update download with Telegram file_id after upload."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE downloads
+                SET file_id = ?, file_path = ?, status = 'uploaded', updated_at = ?
+                WHERE id = ?
+            """, (file_id, file_path, datetime.now().isoformat(), download_id))
+            conn.commit()

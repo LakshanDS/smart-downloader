@@ -6,7 +6,7 @@ from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
 from shared.state import db
-from shared.auth import check_authorized
+from shared.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ async def show_queue_view(query):
             raise
 
 
+@require_auth
 async def handle_queue_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle queue management callbacks."""
     query = update.callback_query
@@ -65,10 +66,6 @@ async def handle_queue_callback(update: Update, context: ContextTypes.DEFAULT_TY
     action = query.data
 
     logger.debug(f"[QUEUE] callback: {action} from chat_id={chat_id}")
-
-    if not check_authorized(chat_id):
-        await query.edit_message_text("❌ You are not authorized to use this bot.")
-        return
 
     if action == 'dashboard_queue':
         logger.debug(f"[QUEUE] showing queue view")

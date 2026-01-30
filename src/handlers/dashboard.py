@@ -5,11 +5,51 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from shared.state import db, link_submission_mode
-from shared.auth import check_authorized
+from shared.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
 
+async def show_main_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE, query=None):
+    """Show the main dashboard. Can edit existing message or send new one."""
+    keyboard = [
+        [InlineKeyboardButton("➕ New Download", callback_data='dashboard_new_download')],
+        [
+            InlineKeyboardButton("📥 Downloads", callback_data='dm_open'),
+            InlineKeyboardButton("⏰ Queue", callback_data='dashboard_queue')
+        ],
+        [
+            InlineKeyboardButton("📁 My Files", callback_data='dashboard_files'),
+            InlineKeyboardButton("🔍 Search", callback_data='dashboard_search')
+        ],
+        [
+            InlineKeyboardButton("⭐ Favorites", callback_data='dashboard_favorites'),
+            InlineKeyboardButton("ℹ️ Help", callback_data='dashboard_help')
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    message = (
+        "🎬 *Smart Downloader*\n\n"
+        "Your personal media server using Telegram as storage.\n\n"
+        "💡 Send a link or use the button below!"
+    )
+
+    if query:
+        await query.edit_message_text(
+            message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+    else:
+        await update.message.reply_text(
+            message,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+
+
+@require_auth
 async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle dashboard button callbacks."""
     query = update.callback_query
@@ -20,76 +60,20 @@ async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAUL
 
     logger.debug(f"[DASHBOARD] callback: {action} from chat_id={chat_id}")
 
-    if not check_authorized(chat_id):
-        await query.edit_message_text("❌ You are not authorized to use this bot.")
-        return
-
     # Skip queue callbacks - handled by handle_queue_callback
     if action.startswith('dashboard_queue') or action.startswith('queue_'):
         logger.debug(f"[DASHBOARD] skipping queue callback: {action}")
         return
 
     if action == 'dashboard_new_download':
-        link_submission_mode[chat_id] = {'active': True}
-        logger.info(f"Activated link submission mode for chat_id={chat_id}")
-
-        from config import UPLOADER_API_ID, UPLOADER_API_HASH, UPLOADER_PHONE
-        has_userbot = all([UPLOADER_API_ID, UPLOADER_API_HASH, UPLOADER_PHONE])
-
-        if has_userbot:
-            file_limit = "2GB"
-            limit_note = "✅ Userbot configured!"
-        else:
-            file_limit = "50MB"
-            limit_note = "⚠️ Standard bot limit - Setup userbot for 2GB support: /userbot_setup"
-
-        keyboard = [[InlineKeyboardButton("✅ Done", callback_data='dashboard_new_download_done')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await query.edit_message_text(
-            f"🔗 *Send me download links...*\n\n"
-            f"• *Magnet links* - for torrents\n"
-            f"• *Direct URLs* - for videos, files, etc.\n\n"
-            f"📁 File limit: {file_limit}\n"
-            f"{limit_note}",
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
-        )
+        from handlers.newurls import show_new_url_prompt
+        await show_new_url_prompt(update, context)
         return
 
-    if action == 'dashboard_new_download_done':
+    if action == 'dashboard_back':
         if chat_id in link_submission_mode:
             del link_submission_mode[chat_id]
-            logger.info(f"Deactivated link submission mode for chat_id={chat_id} (Done button)")
-
-    if action == 'dashboard_back' or action == 'dashboard_new_download_done':
-        if chat_id in link_submission_mode:
-            del link_submission_mode[chat_id]
-
-        keyboard = [
-            [InlineKeyboardButton("➕ New Download", callback_data='dashboard_new_download')],
-            [
-                InlineKeyboardButton("📥 Downloads", callback_data='dm_open'),
-                InlineKeyboardButton("⏰ Queue", callback_data='dashboard_queue')
-            ],
-            [
-                InlineKeyboardButton("📁 My Files", callback_data='dashboard_files'),
-                InlineKeyboardButton("🔍 Search", callback_data='dashboard_search')
-            ],
-            [
-                InlineKeyboardButton("⭐ Favorites", callback_data='dashboard_favorites'),
-                InlineKeyboardButton("ℹ️ Help", callback_data='dashboard_help')
-            ]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        await query.edit_message_text(
-            "🎬 *Smart Downloader*\n\n"
-            "Your personal media server using Telegram as storage.\n\n"
-            "💡 Send a link or use the button below!",
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
-        )
+        await show_main_dashboard(update, context, query)
         return
 
     if action == 'dashboard_files':
@@ -131,24 +115,13 @@ async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAUL
         await query.edit_message_text(msg, reply_markup=reply_markup)
 
     elif action == 'dashboard_help':
-        keyboard = [[InlineKeyboardButton("◀️ Back", callback_data='dashboard_back')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(
-            "ℹ️ *Help*\n\n"
-            "• Send a link to download\n"
-            "• Use /torrent <magnet> for torrents\n"
-            "• Use /download <url> for direct links\n"
-            "• Use /search <query> to find files\n"
-            "• Use /status to check downloads\n"
-            "• Use /userbot_setup to enable large file support\n\n",
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
-        )
+        from handlers.help import show_help_topic
+        await show_help_topic(update, context, 'main')
+        return
 
     # Download manager callbacks
     elif action.startswith('dm_'):
-        from shared.state import queue_manager
-        from handlers.download_manager import (
+        from handlers.downloads import (
             show_download_manager,
             handle_pause,
             handle_resume,
@@ -158,8 +131,8 @@ async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAUL
         if action == 'dm_open' or action == 'dm_refresh':
             await show_download_manager(update, context, db)
         elif action.startswith('dm_pause_'):
-            await handle_pause(update, context, db, queue_manager)
+            await handle_pause(update, context, db)
         elif action.startswith('dm_resume_'):
-            await handle_resume(update, context, db, queue_manager)
+            await handle_resume(update, context, db)
         elif action.startswith('dm_cancel_'):
-            await handle_cancel(update, context, db, queue_manager)
+            await handle_cancel(update, context, db)
