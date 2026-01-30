@@ -33,7 +33,7 @@ ARIA2C_DOWNLOAD_DIR = os.getenv('ARIA2C_DOWNLOAD_DIR', '/downloads/torrents')
 ARIA2C_MAX_CONCURRENT = int(os.getenv('ARIA2C_MAX_CONCURRENT', '3'))
 
 # Direct download settings
-DOWNLOAD_DIR = os.getenv('DOWNLOAD_DIR', '/tmp/downloads')
+DOWNLOAD_DIR = os.path.abspath(os.getenv('DOWNLOAD_DIR', './downloads'))
 YTDLP_FORMAT = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
 
 # Video quality settings for Playwright crawler

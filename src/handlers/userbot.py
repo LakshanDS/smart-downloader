@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
@@ -9,6 +10,9 @@ from shared.state import db, userbot_setup
 from shared.auth import require_auth
 
 logger = logging.getLogger(__name__)
+
+# Store pending auth codes: {chat_id: {'phone': str, 'code': str, 'phone_code_hash': str}}
+pending_auth_codes = {}
 
 
 @require_auth
@@ -163,9 +167,74 @@ async def handle_userbot_setup_text(update: Update, context: ContextTypes.DEFAUL
             "Please use the buttons above to confirm or cancel."
         )
 
+    elif step == 5:
+        # Handle verification code entry
+        code = text.strip()
+
+        if not code or len(code) < 3:
+            await update.message.reply_text(
+                "❌ *Invalid code*\n\n"
+                "Please enter the verification code you received on Telegram.",
+                reply_markup=reply_markup,
+                parse_mode='Markdown'
+            )
+            return
+
+        data = userbot_setup[chat_id]
+
+        try:
+            from telethon import TelegramClient
+            from telethon.tl.functions.auth import SignInRequest
+
+            session_name = f'sessions/{data["phone"]}'
+            client = TelegramClient(session_name, data['api_id'], data['api_hash'])
+
+            await client.connect()
+
+            # Sign in with the code
+            await client(SignInRequest(
+                data['phone'],
+                data.get('phone_code_hash', ''),
+                code
+            ))
+
+            if await client.is_user_authorized():
+                me = await client.get_me()
+                await client.disconnect()
+
+                del userbot_setup[chat_id]
+
+                await update.message.reply_text(
+                    f"✅ *Userbot configured successfully!*\n\n"
+                    f"Logged in as: {me.first_name} (@{me.username or 'no username'})\n\n"
+                    f"Your bot can now upload files up to **2GB**.\n\n"
+                    f"Restart the bot to apply changes.",
+                    parse_mode='Markdown'
+                )
+
+                logger.info(f"Userbot authenticated for {chat_id}: {me.first_name}")
+            else:
+                await client.disconnect()
+                await update.message.reply_text(
+                    "❌ *Authentication failed*\n\n"
+                    "The code was incorrect or expired.\n\n"
+                    "Please try again with /userbot_setup",
+                    parse_mode='Markdown'
+                )
+                del userbot_setup[chat_id]
+
+        except Exception as e:
+            logger.error(f"Userbot sign in failed: {e}")
+            del userbot_setup[chat_id]
+            await update.message.reply_text(
+                f"❌ *Authentication failed:*\n\n{str(e)}\n\n"
+                f"Please try again with /userbot_setup",
+                parse_mode='Markdown'
+            )
+
 
 async def handle_userbot_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle userbot setup confirmation."""
+    """Handle userbot setup confirmation and send auth code."""
     query = update.callback_query
     await query.answer()
 
@@ -178,6 +247,7 @@ async def handle_userbot_confirm(update: Update, context: ContextTypes.DEFAULT_T
     data = userbot_setup[chat_id]
 
     try:
+        # Save to .env first
         env_path = '.env'
         with open(env_path, 'r') as f:
             env_lines = f.readlines()
@@ -186,18 +256,18 @@ async def handle_userbot_confirm(update: Update, context: ContextTypes.DEFAULT_T
         found_vars = {'UPLOADER_API_ID': False, 'UPLOADER_API_HASH': False, 'UPLOADER_PHONE': False}
 
         for line in env_lines:
-            line = line.strip()
-            if line.startswith('UPLOADER_API_ID='):
+            line_stripped = line.strip()
+            if line_stripped.startswith('UPLOADER_API_ID='):
                 updated_lines.append(f"UPLOADER_API_ID={data['api_id']}\n")
                 found_vars['UPLOADER_API_ID'] = True
-            elif line.startswith('UPLOADER_API_HASH='):
+            elif line_stripped.startswith('UPLOADER_API_HASH='):
                 updated_lines.append(f"UPLOADER_API_HASH={data['api_hash']}\n")
                 found_vars['UPLOADER_API_HASH'] = True
-            elif line.startswith('UPLOADER_PHONE='):
+            elif line_stripped.startswith('UPLOADER_PHONE='):
                 updated_lines.append(f"UPLOADER_PHONE={data['phone']}\n")
                 found_vars['UPLOADER_PHONE'] = True
-            elif line and not line.startswith('#'):
-                updated_lines.append(line + '\n')
+            elif line_stripped and not line_stripped.startswith('#'):
+                updated_lines.append(line if line.endswith('\n') else line + '\n')
 
         if not found_vars['UPLOADER_API_ID']:
             updated_lines.append(f"UPLOADER_API_ID={data['api_id']}\n")
@@ -209,27 +279,58 @@ async def handle_userbot_confirm(update: Update, context: ContextTypes.DEFAULT_T
         with open(env_path, 'w') as f:
             f.writelines(updated_lines)
 
-        import config
-        config.UPLOADER_API_ID = str(data['api_id'])
-        config.UPLOADER_API_HASH = data['api_hash']
-        config.UPLOADER_PHONE = data['phone']
+        # Now send the authentication code
+        from telethon import TelegramClient
 
-        del userbot_setup[chat_id]
+        session_name = f'sessions/{data["phone"]}'
+        os.makedirs('sessions', exist_ok=True)
+
+        client = TelegramClient(session_name, data['api_id'], data['api_hash'])
 
         await query.edit_message_text(
-            "✅ *Userbot configured successfully!*\n\n"
-            "Your bot can now upload files up to **2GB**.\n\n"
-            "The bot will restart momentarily to apply changes...",
+            "📱 *Sending verification code...*\n\n"
+            "Please wait...",
             parse_mode='Markdown'
         )
 
-        logger.info(f"Userbot configured by user {chat_id}. Restart recommended.")
+        # Connect and send code
+        await client.connect()
+
+        if await client.is_user_authorized():
+            await client.disconnect()
+            await query.edit_message_text(
+                "✅ *Userbot already authenticated!*\n\n"
+                "Your bot can now upload files up to **2GB**.\n\n"
+                "Restart the bot to apply changes.",
+                parse_mode='Markdown'
+            )
+            del userbot_setup[chat_id]
+            return
+
+        # Send code request
+        from telethon.tl.functions.auth import SendCodeRequest
+        result = await client(SendCodeRequest(data['phone'], 5, 'sms' if '+881' not in data['phone'] else 'app'))
+
+        # Store for verification
+        userbot_setup[chat_id]['phone_code_hash'] = result.phone_code_hash
+        userbot_setup[chat_id]['step'] = 5  # Now waiting for code
+
+        await client.disconnect()
+
+        await query.edit_message_text(
+            "✅ *Verification code sent!*\n\n"
+            f"Check your Telegram for the code sent to `{data['phone']}`\n\n"
+            "Send the code here to complete setup.",
+            parse_mode='Markdown'
+        )
+
+        logger.info(f"Auth code sent to {data['phone']} for user {chat_id}")
 
     except Exception as e:
-        logger.error(f"Userbot setup failed: {e}")
+        logger.error(f"Userbot auth failed: {e}")
         del userbot_setup[chat_id]
         await query.edit_message_text(
-            f"❌ *Setup failed:*\n\n{str(e)}\n\n"
+            f"❌ *Authentication failed:*\n\n{str(e)}\n\n"
             f"Please try again with /userbot_setup",
             parse_mode='Markdown'
         )

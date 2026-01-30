@@ -1,12 +1,12 @@
 """
-Uploader Bot - Phase 8
+Uploader Bot - Upload Module
 Userbot client for large file uploads (up to 2 GB).
 """
 
 import logging
 import os
 from typing import Optional, Dict
-from telethon.sync import TelegramClient
+from telethon import TelegramClient
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class UploaderBot:
     """Userbot client for large file uploads."""
 
     def __init__(self, api_id: Optional[int] = None, api_hash: Optional[str] = None,
-                 phone: Optional[str] = None, session_name: str = 'uploader_bot'):
+                 phone: Optional[str] = None, session_name: str = 'sessions/uploader_bot'):
         """
         Initialize uploader bot.
 
@@ -38,9 +38,10 @@ class UploaderBot:
         self._authorized = False
 
         if self.api_id and self.api_hash:
-            self._connect()
+            # Don't auto-connect, let async methods handle it
+            pass
 
-    def _connect(self):
+    async def _connect(self):
         """Initialize Telegram client connection."""
         try:
             self.client = TelegramClient(
@@ -52,9 +53,16 @@ class UploaderBot:
             logger.info(f"Connecting userbot: {self.phone}")
 
             # Start client
-            self.client.connect()
+            await self.client.connect()
 
-            if not self.client.is_user_authorized():
+            # Check authorization - Telethon's is_user_authorized() might be a method or coroutine
+            try:
+                is_authorized = await self.client.is_user_authorized()
+            except TypeError:
+                # If it's not a coroutine, call it directly
+                is_authorized = self.client.is_user_authorized()
+
+            if not is_authorized:
                 logger.warning("Userbot not authorized. Run with --auth to authorize.")
                 self._authorized = False
                 return False
@@ -68,24 +76,38 @@ class UploaderBot:
             raise RuntimeError(f"Could not connect userbot: {str(e)}")
 
     def is_connected(self) -> bool:
-        """Check if userbot is connected and authorized."""
-        return bool(self.client and self.client.is_connected() and self._authorized)
+        """Check if userbot is connected and authorized (sync version)."""
+        if not self.client:
+            return False
+
+        try:
+            # Telethon's is_connected is actually a method that returns bool
+            connected = self.client.is_connected()
+            return bool(connected and self._authorized)
+        except:
+            return self._authorized
 
     def is_authorized(self) -> bool:
         """Check if userbot is authorized."""
         return self._authorized
 
-    def upload_file(self, file_path: str, caption: Optional[str] = None) -> Optional[Dict]:
+    async def upload_file(self, file_path: str, caption: Optional[str] = None,
+                    progress_callback=None) -> Optional[Dict]:
         """
         Upload file to 'Saved Messages' (Telegram's cloud storage).
 
         Args:
             file_path: Path to file to upload
             caption: Optional caption for the file
+            progress_callback: Optional callback(current, total) for progress
 
         Returns:
             Dictionary with file metadata or None on failure
         """
+        if not self.client:
+            # Try to connect
+            await self._connect()
+
         if not self.is_connected():
             logger.error("Userbot not connected, cannot upload")
             return None
@@ -98,13 +120,21 @@ class UploaderBot:
                 logger.error(f"File not found: {file_path}")
                 return None
 
+            # Log if progress callback is provided
+            if progress_callback:
+                logger.info("Progress callback enabled for upload")
+
             # Upload file to 'me' (Saved Messages)
-            message = self.client.send_file(
-                'me',
-                file_path,
-                caption=caption,
-                parse_mode='markdown'
-            )
+            # Use file handle for better progress tracking
+            with open(file_path, 'rb') as file:
+                message = await self.client.send_file(
+                    'me',
+                    file,
+                    caption=caption,
+                    parse_mode='markdown',
+                    progress=progress_callback,
+                    part_size_kb=128  # Smaller chunks (128KB) for more progress updates
+                )
 
             logger.info(f"Upload complete: message_id={message.id}")
 
@@ -144,7 +174,7 @@ class UploaderBot:
             logger.error(f"Upload failed: {e}")
             raise UploadError(f"Could not upload file: {str(e)}")
 
-    def delete_file(self, message_id: int) -> bool:
+    async def delete_file(self, message_id: int) -> bool:
         """
         Delete a file from Saved Messages.
 
@@ -154,12 +184,12 @@ class UploaderBot:
         Returns:
             True if deleted successfully
         """
-        if not self.is_connected():
+        if not self.client or not self.is_connected():
             logger.error("Userbot not connected, cannot delete")
             return False
 
         try:
-            self.client.delete_messages('me', message_id)
+            await self.client.delete_messages('me', message_id)
             logger.info(f"Deleted message {message_id}")
             return True
 
@@ -167,7 +197,7 @@ class UploaderBot:
             logger.error(f"Failed to delete message {message_id}: {e}")
             return False
 
-    def get_file_info(self, message_id: int) -> Optional[Dict]:
+    async def get_file_info(self, message_id: int) -> Optional[Dict]:
         """
         Get file information from Saved Messages.
 
@@ -177,11 +207,11 @@ class UploaderBot:
         Returns:
             Dictionary with file info or None
         """
-        if not self.is_connected():
+        if not self.client or not self.is_connected():
             return None
 
         try:
-            message = self.client.get_messages('me', ids=message_id)
+            message = await self.client.get_messages('me', ids=message_id)
 
             if not message:
                 return None
@@ -207,10 +237,10 @@ class UploaderBot:
             logger.error(f"Failed to get file info: {e}")
             return None
 
-    def disconnect(self):
+    async def disconnect(self):
         """Close userbot connection."""
         if self.client:
-            self.client.disconnect()
+            await self.client.disconnect()
             self._authorized = False
             logger.info("Userbot disconnected")
 
@@ -222,14 +252,13 @@ class UploaderBot:
             Dictionary with status info
         """
         return {
-            'connected': self.is_connected(),
-            'authorized': self.is_authorized(),
+            'connected': self.client is not None,
+            'authorized': self._authorized,
             'phone': self.phone,
             'session': self.session_name
         }
 
 
-# Convenience function for quick access
 def get_uploader() -> Optional[UploaderBot]:
     """Get a singleton uploader instance."""
     if not hasattr(get_uploader, '_instance'):

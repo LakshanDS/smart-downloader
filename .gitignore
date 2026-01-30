@@ -50,5 +50,4 @@ temp/
 nul
 .env
 logs/
-pooler.log
-logs/bot.log
+*.log

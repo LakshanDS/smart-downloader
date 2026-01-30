@@ -47,13 +47,15 @@ class DirectDownloader:
             rpc_url: aria2c RPC URL
         """
         self.db = db
-        self.download_dir = download_dir or DOWNLOAD_DIR
+        # Ensure absolute path
+        self.download_dir = os.path.abspath(download_dir or DOWNLOAD_DIR)
         self.rpc_url = rpc_url or ARIA2C_RPC_URL
         self.aria = None
         self.current_gid = None
 
         # Create download dir
         os.makedirs(self.download_dir, exist_ok=True)
+        logger.info(f"DirectDownloader initialized with download_dir: {self.download_dir}")
 
         # Initialize aria2c
         self._init_aria2()
@@ -68,6 +70,10 @@ class DirectDownloader:
             parsed = urlparse(self.rpc_url)
             host = parsed.hostname or 'localhost'
             port = parsed.port or 6800
+
+            # Add http:// scheme if not present for aria2p
+            if parsed.scheme:
+                host = f"{parsed.scheme}://{host}"
 
             client = aria2p.Client(host=host, port=port)
             self.aria = aria2p.API(client)
@@ -293,6 +299,10 @@ class DirectDownloader:
 
         # Add to aria2c
         try:
+            # Set global dir option before download (aria2c bug: per-download dir doesn't always work)
+            self.aria.set_global_options({'dir': self.download_dir})
+            logger.debug(f"Set aria2c global dir to: {self.download_dir}")
+
             download_obj = self.aria.add_uris([url], options=options)
             gid = download_obj.gid
             self.current_gid = gid
@@ -332,19 +342,58 @@ class DirectDownloader:
                 else:
                     progress = 0
 
-                # Update database
+                # Update database (convert timedelta eta to seconds)
+                eta_seconds = int(download.eta.total_seconds()) if download.eta else 0
                 self.db.update_progress(
                     download_id,
                     progress=progress,
                     download_speed=download.download_speed,
-                    eta_seconds=download.eta
+                    eta_seconds=eta_seconds
                 )
 
                 # Check if complete
                 if status == 'complete':
                     logger.info(f"Download complete: {gid}")
-                    self.db.update_download_status(download_id, 'downloaded')
-                    return output_path
+                    # Get actual file path from aria2c
+                    logger.debug(f"Aria2 download.dir: {download.dir}")
+                    logger.debug(f"Self download_dir: {self.download_dir}")
+                    logger.debug(f"Download files: {download.files}")
+                    logger.debug(f"Root files paths: {download.root_files_paths}")
+
+                    # aria2c returns relative paths, combine with our known absolute download_dir
+                    found_path = None
+
+                    # Method 1: Use root_files_paths if it's absolute
+                    if download.root_files_paths and len(download.root_files_paths) > 0:
+                        path = download.root_files_paths[0]
+                        if path.is_absolute():
+                            found_path = str(path)
+                            logger.debug(f"Found absolute path from root_files_paths: {found_path}")
+
+                    # Method 2: Construct from self.download_dir + filename
+                    if not found_path and download.files and len(download.files) > 0:
+                        filename = download.files[0].path
+                        # filename might be relative or just the name
+                        if os.path.isabs(filename):
+                            found_path = filename
+                        else:
+                            # Get just the filename from the path
+                            basename = os.path.basename(filename)
+                            found_path = os.path.join(self.download_dir, basename)
+                        logger.debug(f"Constructed path: {found_path}")
+
+                    # Method 3: Try expected path
+                    if not found_path or not os.path.exists(found_path):
+                        found_path = output_path
+                        logger.debug(f"Trying expected path: {found_path}")
+
+                    # Verify and return
+                    if found_path and os.path.exists(found_path):
+                        logger.info(f"Downloaded file found: {found_path}")
+                        self.db.update_download_status(download_id, 'downloaded')
+                        return found_path
+                    else:
+                        raise DownloadError(f"Download complete but file not found. Tried: {found_path}")
 
                 # Check if errored
                 if status == 'error':

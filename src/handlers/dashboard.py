@@ -1,10 +1,11 @@
 """Dashboard handlers - inline keyboard callbacks."""
 
+import asyncio
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from shared.state import db, link_submission_mode
+from shared.state import db, link_submission_mode, active_download_managers
 from shared.auth import require_auth
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,14 @@ async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAUL
         return
 
     if action == 'dashboard_back':
+        # Cancel auto-refresh task if active
+        if chat_id in active_download_managers:
+            task = active_download_managers[chat_id].get('task')
+            if task and not task.done():
+                task.cancel()
+            del active_download_managers[chat_id]
+            logger.debug(f"Cancelled auto-refresh for chat {chat_id}")
+
         if chat_id in link_submission_mode:
             del link_submission_mode[chat_id]
         await show_main_dashboard(update, context, query)
@@ -128,7 +137,7 @@ async def handle_dashboard_callback(update: Update, context: ContextTypes.DEFAUL
             handle_cancel
         )
 
-        if action == 'dm_open' or action == 'dm_refresh':
+        if action == 'dm_open':
             await show_download_manager(update, context, db)
         elif action.startswith('dm_pause_'):
             await handle_pause(update, context, db)

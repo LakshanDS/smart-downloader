@@ -117,9 +117,9 @@ async def startup_pooler(app: Application):
             pooler = start_pooler_process(
                 db_path=db_path,
                 bot_token=BOT_TOKEN,
-                userbot_api_id=os.getenv('USERBOT_API_ID'),
-                userbot_api_hash=os.getenv('USERBOT_API_HASH'),
-                userbot_phone=os.getenv('USERBOT_PHONE'),
+                userbot_api_id=os.getenv('UPLOADER_API_ID'),
+                userbot_api_hash=os.getenv('UPLOADER_API_HASH'),
+                userbot_phone=os.getenv('UPLOADER_PHONE'),
                 download_dir=download_dir,
                 aria2c_rpc_url=aria2c_rpc_url,
                 poll_interval=poll_interval

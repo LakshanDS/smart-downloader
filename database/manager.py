@@ -796,6 +796,17 @@ class DatabaseManager:
             """)
             return [dict(row) for row in cursor.fetchall()]
 
+    def get_most_recent_download(self) -> Dict:
+        """Get the most recently added/updated download (for post-completion display)."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT * FROM downloads
+                ORDER BY updated_at DESC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
     def get_queue_snapshot_count(self) -> int:
         """Get total count including active and pending (for queue counter display)."""
         with self.get_connection() as conn:
@@ -828,14 +839,20 @@ class DatabaseManager:
     # === Pooler Queries ===
 
     def get_next_pending_download(self) -> Optional[Dict]:
-        """Get next pending download, respecting priority and pause state."""
+        """Get next pending download, respecting priority and pause state.
+
+        Also picks up items stuck in 'downloading' status (e.g., after bot restart).
+        """
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT * FROM downloads
-                WHERE status = 'pending'
+                WHERE status IN ('pending', 'downloading')
                   AND paused = 0
-                ORDER BY priority DESC, added_date ASC
+                ORDER BY
+                    CASE WHEN status = 'downloading' THEN 0 ELSE 1 END,
+                    priority DESC,
+                    added_date ASC
                 LIMIT 1
             """)
             row = cursor.fetchone()

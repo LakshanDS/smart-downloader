@@ -20,3 +20,6 @@ link_submission_mode = {}
 
 # Userbot setup workflow: {chat_id: {'step': 1-5, 'api_id': ..., 'api_hash': ..., 'phone': ...}}
 userbot_setup = {}
+
+# Active Download Manager views: {chat_id: {'message_id': 123, 'task': asyncio_task}}
+active_download_managers = {}

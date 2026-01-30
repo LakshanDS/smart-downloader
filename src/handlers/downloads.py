@@ -2,8 +2,10 @@
 Download Manager Handler - Smart Downloader
 
 Shows active downloads with individual controls, progress, speed, ETA, and queue counter.
+Auto-refreshes every 3 seconds when downloads are active.
 """
 
+import asyncio
 import logging
 import re
 from datetime import datetime
@@ -13,8 +15,11 @@ from telegram.ext import CallbackContext
 from telegram.error import BadRequest
 
 from database.manager import DatabaseManager
+import shared.state as state
 
 logger = logging.getLogger(__name__)
+
+REFRESH_INTERVAL = 3
 
 
 def clean_filename(title: str, max_length: int = 32) -> str:
@@ -114,10 +119,170 @@ def get_download_status_emoji(status: str, paused: bool = False) -> str:
     return "❓"
 
 
+async def auto_refresh_loop(chat_id: int, message_id: int, context: CallbackContext, db: DatabaseManager):
+    """Background task to auto-refresh Download Manager every 3 seconds."""
+    try:
+        # Continue refreshing for 30 seconds after downloads complete
+        post_completion_seconds = 30
+        no_download_count = 0
+
+        while True:
+            await asyncio.sleep(REFRESH_INTERVAL)
+
+            # Check if still active
+            if chat_id not in state.active_download_managers:
+                break
+
+            active_downloads = db.get_all_active_downloads()
+
+            if not active_downloads:
+                # No active downloads - count down to show completion briefly
+                no_download_count += REFRESH_INTERVAL
+                if no_download_count >= post_completion_seconds:
+                    # Time's up, stop auto-refresh
+                    del state.active_download_managers[chat_id]
+                    break
+            else:
+                # Reset counter when downloads are active
+                no_download_count = 0
+
+            # Update message (pass empty list if no downloads, will show recent)
+            await _update_download_manager_message(chat_id, message_id, context, db, active_downloads)
+    except asyncio.CancelledError:
+        logger.debug(f"Auto-refresh loop cancelled for chat {chat_id}")
+    except Exception as e:
+        logger.error(f"Auto-refresh loop error for chat {chat_id}: {e}")
+        if chat_id in state.active_download_managers:
+            del state.active_download_managers[chat_id]
+
+
+async def _update_download_manager_message(chat_id: int, message_id: int, context: CallbackContext,
+                                           db: DatabaseManager, active_downloads: list):
+    """Update the Download Manager message with current data."""
+    try:
+        # Build message
+        message_lines = ["📥 **Download Manager**", "━━━━━━━━━━━━━━━━━━━━━"]
+
+        # Show active download first
+        active = None
+        for dl in active_downloads:
+            if dl['status'] == 'downloading' or (dl['status'] == 'pending' and not active):
+                active = dl
+                break
+
+        # If no active downloads, show most recent (for post-completion display)
+        recent = None
+        if not active:
+            recent = db.get_most_recent_download()
+
+        display_item = active or recent
+
+        if display_item:
+            position, total = db.get_queue_position(display_item['id'])
+            paused = bool(display_item.get('paused', 0))
+
+            status_emoji = get_download_status_emoji(display_item['status'], paused)
+
+            progress = display_item.get('progress', 0) or 0
+            dl_speed = display_item.get('download_speed') or 0
+            ul_speed = display_item.get('upload_speed') or 0
+            eta = display_item.get('eta_seconds') or 0
+            file_size = display_item.get('file_size')
+
+            message_lines.extend([
+                f"",
+                f"**{status_emoji} Active Download** ({position}/{total})" if total > 0 else f"**{status_emoji} Active Download**",
+                f"{create_progress_bar(progress)} {progress}%",
+                f"⏱️ ETA: {format_eta(eta)}",
+                f"↓ {format_speed(dl_speed)} | ↑ {format_speed(ul_speed)}",
+            ])
+
+            if file_size:
+                downloaded = (file_size * progress / 100) if progress > 0 else 0
+                message_lines.append(f"📊 {format_size(int(downloaded))} / {format_size(file_size)}")
+
+        # Show next item in queue only
+        queued = [dl for dl in active_downloads if dl['id'] != (active['id'] if active else None)]
+        if queued:
+            next_item = queued[0]
+            next_title = clean_filename(next_item.get('title') or next_item['url'])
+            position, total = db.get_queue_position(next_item['id'])
+            message_lines.extend([
+                f"",
+                f"**📋 Up Next:** ({position}/{total})",
+                f"⏳ {next_title}"
+            ])
+            if len(queued) > 1:
+                message_lines.append(f"... and {len(queued) - 1} more in queue")
+
+        message = "\n".join(message_lines)
+
+        # Build keyboard
+        keyboard = []
+
+        if active:
+            download_id = active['id']
+            paused = bool(active.get('paused', 0))
+            can_pause = bool(active.get('can_pause', 1))
+
+            if paused:
+                keyboard.append([
+                    InlineKeyboardButton("▶ Resume", callback_data=f"dm_resume_{download_id}"),
+                    InlineKeyboardButton("✕ Cancel", callback_data=f"dm_cancel_{download_id}")
+                ])
+            else:
+                if active['status'] == 'downloading' and can_pause:
+                    keyboard.append([
+                        InlineKeyboardButton("⏸ Pause", callback_data=f"dm_pause_{download_id}"),
+                        InlineKeyboardButton("✕ Cancel", callback_data=f"dm_cancel_{download_id}")
+                    ])
+                else:
+                    keyboard.append([
+                        InlineKeyboardButton("✕ Cancel", callback_data=f"dm_cancel_{download_id}")
+                    ])
+
+        # New download button (no refresh button - auto-refresh enabled)
+        keyboard.append([
+            InlineKeyboardButton("➕ New Download", callback_data="dashboard_new_download")
+        ])
+
+        # Back button
+        keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data="dashboard_back")])
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+    except BadRequest as e:
+        if "not modified" in str(e).lower():
+            pass
+        elif "message to edit not found" in str(e).lower() or "message is not modified" in str(e).lower():
+            # Message deleted or user navigated away
+            if chat_id in state.active_download_managers:
+                del state.active_download_managers[chat_id]
+        else:
+            logger.warning(f"BadRequest in auto-refresh: {e}")
+    except Exception as e:
+        logger.warning(f"Failed to auto-refresh download manager: {e}")
+
+
 async def show_download_manager(update: Update, context: CallbackContext, db: DatabaseManager):
     """Show the download manager interface."""
     query = update.callback_query
     await query.answer()
+
+    chat_id = query.message.chat_id
+
+    # Cancel any existing auto-refresh for this chat
+    if chat_id in state.active_download_managers:
+        old_task = state.active_download_managers[chat_id].get('task')
+        if old_task and not old_task.done():
+            old_task.cancel()
 
     # Get all active downloads
     active_downloads = db.get_all_active_downloads()
@@ -129,7 +294,6 @@ async def show_download_manager(update: Update, context: CallbackContext, db: Da
 Active downloads will appear here."""
         keyboard = [
             [InlineKeyboardButton("➕ New Download", callback_data="dashboard_new_download")],
-            [InlineKeyboardButton("🔄 Refresh", callback_data="dm_refresh")],
             [InlineKeyboardButton("⬅️ Back", callback_data="dashboard_back")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -217,10 +381,9 @@ Active downloads will appear here."""
                     InlineKeyboardButton("✕ Cancel", callback_data=f"dm_cancel_{download_id}")
                 ])
 
-    # New download and refresh buttons
+    # New download button (no refresh button - auto-refresh enabled)
     keyboard.append([
-        InlineKeyboardButton("➕ New Download", callback_data="dashboard_new_download"),
-        InlineKeyboardButton("🔄 Refresh", callback_data="dm_refresh")
+        InlineKeyboardButton("➕ New Download", callback_data="dashboard_new_download")
     ])
 
     # Back button - use universal dashboard_back callback
@@ -229,11 +392,18 @@ Active downloads will appear here."""
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     try:
-        await query.edit_message_text(
+        sent_message = await query.edit_message_text(
             text=message,
             parse_mode='Markdown',
             reply_markup=reply_markup
         )
+
+        # Start auto-refresh task
+        message_id = sent_message.message_id
+        task = asyncio.create_task(auto_refresh_loop(chat_id, message_id, context, db))
+        state.active_download_managers[chat_id] = {'message_id': message_id, 'task': task}
+        logger.debug(f"Started auto-refresh for chat {chat_id}, message {message_id}")
+
     except BadRequest as e:
         # Ignore "not modified" errors - content hasn't changed
         if "not modified" not in str(e).lower():

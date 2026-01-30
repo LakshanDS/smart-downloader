@@ -15,13 +15,13 @@ class RetryHandler:
     Retry Handler - Exponential Backoff
 
     Handles download failures with configurable retry logic:
-    - Max retries: 3
-    - Base delay: 60 seconds
+    - Max retries: 5
+    - Base delay: 30 seconds
     - Exponential backoff: 60s, 120s, 240s
     """
 
-    MAX_RETRIES = 3
-    BASE_DELAY = 60  # seconds
+    MAX_RETRIES = 5
+    BASE_DELAY = 30 # seconds
 
     def __init__(self, db):
         """

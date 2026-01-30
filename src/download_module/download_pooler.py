@@ -1,14 +1,15 @@
 """
-Download Pooler - Smart Downloader
+Download Pooler - Download Module
 
-Non-blocking pooler process for downloads/uploads.
-Polls database for pending jobs and processes them independently.
+Non-blocking pooler for downloads only.
+Polls database for pending downloads and processes them.
+
+Upload is handled separately by upload_module.UploadPooler.
 """
 
 import asyncio
 import logging
 import signal
-import sys
 from datetime import datetime
 from typing import Optional, Dict
 from telegram import Bot
@@ -18,37 +19,31 @@ logger = logging.getLogger(__name__)
 
 class DownloadPooler:
     """
-    Download Pooler - Separate Process Pooler
+    Download Pooler - Separate Process for Downloads
 
-    Non-blocking download/upload system that:
+    Non-blocking download system that:
     - Polls database for pending downloads
     - Routes to appropriate handler (torrent/direct/crawler)
-    - Uploads completed files to Telegram
     - Handles retries with exponential backoff
     - Supports graceful shutdown
 
-    Status flow: pending -> downloading -> downloaded -> uploading -> uploaded
+    Status flow: pending -> downloading -> downloaded
+
+    Upload is handled separately by upload_module.UploadPooler.
     """
 
-    def __init__(self, db, bot_token: str, db_path: str = None,
-                 userbot_api_id: str = None, userbot_api_hash: str = None,
-                 userbot_phone: str = None, download_dir: str = '/tmp/downloads',
+    def __init__(self, db, bot_token: str = None, download_dir: str = './downloads',
                  aria2c_rpc_url: str = 'http://localhost:6800/jsonrpc'):
         """
         Initialize download pooler.
 
         Args:
             db: Database manager instance
-            bot_token: Telegram bot token
-            db_path: Path to SQLite database
-            userbot_api_id: Userbot API ID (optional)
-            userbot_api_hash: Userbot API hash (optional)
-            userbot_phone: Userbot phone (optional)
+            bot_token: Telegram bot token (for notifications)
             download_dir: Download directory
             aria2c_rpc_url: aria2c RPC URL for torrents
         """
         self.db = db
-        self.db_path = db_path
         self.bot_token = bot_token
         self.download_dir = download_dir
         self.aria2c_rpc_url = aria2c_rpc_url
@@ -56,29 +51,18 @@ class DownloadPooler:
         # State tracking
         self.running = True
         self.current_download_id: Optional[int] = None
-        self.current_upload_id: Optional[int] = None
         self.shutdown_event = asyncio.Event()
 
-        # Initialize bot
-        try:
-            self.bot = Bot(token=bot_token)
-        except Exception as e:
-            logger.error(f"Failed to initialize bot: {e}")
-            self.bot = None
+        # Initialize bot (for notifications)
+        self.bot = None
+        if bot_token:
+            try:
+                self.bot = Bot(token=bot_token)
+            except Exception as e:
+                logger.error(f"Failed to initialize bot: {e}")
 
-        # Initialize handlers
-        from .upload_handler import UploadHandler
+        # Initialize retry handler
         from .retry_handler import RetryHandler
-
-        self.upload_handler = UploadHandler(
-            db=db,
-            bot_token=bot_token,
-            bot_instance=self.bot,
-            userbot_api_id=userbot_api_id,
-            userbot_api_hash=userbot_api_hash,
-            userbot_phone=userbot_phone
-        )
-
         self.retry_handler = RetryHandler(db=db)
 
         # Download handlers (lazy init)
@@ -141,13 +125,6 @@ class DownloadPooler:
                     if download:
                         # Create task for download (non-blocking)
                         asyncio.create_task(self._process_download(download))
-                    else:
-                        # No downloads, check uploads
-                        if self.current_upload_id is None:
-                            upload = await self._get_next_completed_upload()
-                            if upload:
-                                # Create task for upload (non-blocking)
-                                asyncio.create_task(self._process_upload(upload))
 
                 # Wait before next poll
                 await asyncio.sleep(poll_interval)
@@ -170,24 +147,6 @@ class DownloadPooler:
         else:
             # Fallback to existing method
             return self.db.get_next_pending()
-
-    async def _get_next_completed_upload(self) -> Optional[Dict]:
-        """Get next completed download ready for upload."""
-        if hasattr(self.db, 'get_next_completed_upload'):
-            return self.db.get_next_completed_upload()
-        else:
-            # Query for 'downloaded' status files without file_id
-            with self.db.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT * FROM downloads
-                    WHERE status = 'downloaded'
-                      AND file_id IS NULL
-                    ORDER BY added_date ASC
-                    LIMIT 1
-                """)
-                row = cursor.fetchone()
-                return dict(row) if row else None
 
     async def _process_download(self, download: Dict):
         """
@@ -324,41 +283,6 @@ class DownloadPooler:
 
         return await self.direct_downloader.download_from_crawler(url, chat_id, download_id)
 
-    async def _process_upload(self, download: Dict):
-        """
-        Upload completed file to Telegram.
-
-        Args:
-            download: Download record with 'downloaded' status
-        """
-        download_id = download['id']
-        file_path = download.get('file_path')
-
-        self.current_upload_id = download_id
-        logger.info(f"Processing upload {download_id}: {file_path}")
-
-        try:
-            # Upload to Telegram
-            file_id = await self.upload_handler.upload(
-                download_id=download_id,
-                file_path=file_path,
-                caption=f"Downloaded via Smart Downloader",
-                chat_id=download.get('chat_id')
-            )
-
-            if file_id:
-                logger.info(f"Upload complete: {download_id} -> {file_id}")
-                await self._notify_upload_complete(download)
-            else:
-                logger.warning(f"Upload returned no file_id for {download_id}")
-
-        except Exception as e:
-            logger.error(f"Upload failed for {download_id}: {e}")
-            # Status already reverted to 'downloaded' by upload_handler
-
-        finally:
-            self.current_upload_id = None
-
     async def _notify_download_failed(self, download: Dict, error: str):
         """Notify user of download failure."""
         if not self.bot:
@@ -383,30 +307,8 @@ Retries exhausted.
         except Exception as e:
             logger.error(f"Failed to send failure notification: {e}")
 
-    async def _notify_upload_complete(self, download: Dict):
-        """Notify user of upload completion."""
-        if not self.bot:
-            return
-
-        chat_id = download.get('chat_id')
-        if not chat_id:
-            return
-
-        message = f"""
-✅ **Upload Complete**
-
-{download.get('title', 'File')}
-
-Check your saved messages!
-        """
-
-        try:
-            await self.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
-        except Exception as e:
-            logger.error(f"Failed to send completion notification: {e}")
-
     async def _shutdown(self):
-        """Graceful shutdown - wait for current operations."""
+        """Graceful shutdown - wait for current download to complete."""
         logger.info("Initiating graceful shutdown...")
 
         # Wait for current download to complete (with timeout)
@@ -419,15 +321,5 @@ Check your saved messages!
                 )
             except asyncio.TimeoutError:
                 logger.warning("Download timeout, forcing shutdown")
-
-        # Wait for current upload to complete (no timeout - uploads should finish)
-        if self.current_upload_id:
-            logger.info(f"Waiting for upload {self.current_upload_id} to complete...")
-            while self.current_upload_id:
-                await asyncio.sleep(1)
-
-        # Disconnect handlers
-        if self.upload_handler:
-            await self.upload_handler.disconnect()
 
         logger.info("DownloadPooler shutdown complete")
