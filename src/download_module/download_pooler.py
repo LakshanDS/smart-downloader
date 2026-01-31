@@ -2,7 +2,7 @@
 Download Pooler - Download Module
 
 Non-blocking pooler for downloads only.
-Polls database for pending downloads and processes them.
+Polls database for pending downloads and processes them with 3-stage pipeline.
 
 Upload is handled separately by upload_module.UploadPooler.
 """
@@ -12,7 +12,6 @@ import logging
 import signal
 from datetime import datetime
 from typing import Optional, Dict
-from telegram import Bot
 
 logger = logging.getLogger(__name__)
 
@@ -23,51 +22,52 @@ class DownloadPooler:
 
     Non-blocking download system that:
     - Polls database for pending downloads
-    - Routes to appropriate handler (torrent/direct/crawler)
+    - Uses 3-stage pipeline: URL Detection → URL Extraction → aria2c Download
     - Handles retries with exponential backoff
     - Supports graceful shutdown
+    - Supports cancel (no pause/resume)
 
-    Status flow: pending -> downloading -> downloaded
-
-    Upload is handled separately by upload_module.UploadPooler.
+    Status flow: pending → downloading → downloaded
     """
 
-    def __init__(self, db, bot_token: str = None, download_dir: str = './downloads',
-                 aria2c_rpc_url: str = 'http://localhost:6800/jsonrpc'):
+    def __init__(self, db, download_dir: str = './downloads',
+                 aria2c_rpc_url: str = 'http://localhost:6800/jsonrpc',
+                 aria2c_rpc_secret: str = ''):
         """
         Initialize download pooler.
 
         Args:
             db: Database manager instance
-            bot_token: Telegram bot token (for notifications)
             download_dir: Download directory
-            aria2c_rpc_url: aria2c RPC URL for torrents
+            aria2c_rpc_url: aria2c RPC URL for downloads
+            aria2c_rpc_secret: aria2c RPC secret (optional, for authentication)
         """
         self.db = db
-        self.bot_token = bot_token
         self.download_dir = download_dir
         self.aria2c_rpc_url = aria2c_rpc_url
+        self.aria2c_rpc_secret = aria2c_rpc_secret
 
         # State tracking
         self.running = True
         self.current_download_id: Optional[int] = None
         self.shutdown_event = asyncio.Event()
 
-        # Initialize bot (for notifications)
-        self.bot = None
-        if bot_token:
-            try:
-                self.bot = Bot(token=bot_token)
-            except Exception as e:
-                logger.error(f"Failed to initialize bot: {e}")
-
-        # Initialize retry handler
+        # Initialize components
+        from .url_detector import get_url_detector
+        from .aria2c_downloader import Aria2cDownloader
         from .retry_handler import RetryHandler
+
+        self.url_detector = get_url_detector()
+        self.aria2c_downloader = Aria2cDownloader(
+            db=db,
+            rpc_url=aria2c_rpc_url,
+            download_dir=download_dir,
+            rpc_secret=aria2c_rpc_secret
+        )
         self.retry_handler = RetryHandler(db=db)
 
-        # Download handlers (lazy init)
-        self.direct_downloader = None
-        self.torrent_manager = None
+        # Extractors (lazy init)
+        self.extractors = {}
 
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -81,25 +81,6 @@ class DownloadPooler:
         self.running = False
         self.shutdown_event.set()
 
-    def _init_download_handlers(self):
-        """Initialize download handlers lazily."""
-        if not self.direct_downloader:
-            from src.download.direct_downloader import DirectDownloader
-            self.direct_downloader = DirectDownloader(
-                db=self.db,
-                download_dir=self.download_dir,
-                rpc_url=self.aria2c_rpc_url
-            )
-            logger.info("DirectDownloader initialized")
-
-        if not self.torrent_manager:
-            from src.download.torrent_manager import TorrentManager
-            self.torrent_manager = TorrentManager(
-                db=self.db,
-                rpc_url=self.aria2c_rpc_url
-            )
-            logger.info("TorrentManager initialized")
-
     async def start(self, poll_interval: int = 1):
         """
         Main pooler loop.
@@ -109,8 +90,8 @@ class DownloadPooler:
         """
         logger.info("DownloadPooler started")
 
-        # Initialize download handlers
-        self._init_download_handlers()
+        # Handle interrupted downloads on startup
+        await self._handle_interrupted_downloads()
 
         while self.running:
             try:
@@ -148,51 +129,65 @@ class DownloadPooler:
             # Fallback to existing method
             return self.db.get_next_pending()
 
+    async def _handle_interrupted_downloads(self):
+        """Handle downloads that were interrupted (status='downloading')."""
+        interrupted = self.db.get_all_downloads(status='downloading')
+        for download in interrupted:
+            download_id = download['id']
+            logger.info(f"Found interrupted download: {download_id}")
+
+            # Reset to pending for restart
+            self.db.update_download_status(download_id, 'pending')
+            logger.info(f"Reset interrupted download {download_id} to pending")
+
     async def _process_download(self, download: Dict):
         """
-        Process a single download.
+        Process a single download with 3-stage pipeline.
 
         Args:
             download: Download record from database
         """
         download_id = download['id']
         url = download['url']
-        source = download.get('source', 'direct')
 
         self.current_download_id = download_id
-        logger.info(f"Processing download {download_id}: {source}")
+        logger.info(f"Processing download {download_id}: {url[:50]}...")
 
         try:
             # Update status to downloading
             self.db.update_download_status(download_id, 'downloading')
 
-            # Route to appropriate handler
-            if source == 'torrent':
-                file_path = await self._download_torrent(download_id, url)
-            elif source == 'direct':
-                file_path = await self._download_direct(download_id, url)
-            elif source == 'ytdlp':
-                file_path = await self._download_ytdlp(download_id, url)
-            elif source == 'crawler':
-                file_path = await self._download_crawler(download_id, url)
-            elif source == 'playwright':
-                file_path = await self._download_crawler(download_id, url)
-            else:
-                raise ValueError(f"Unknown source: {source}")
+            # Stage 1: URL Detection
+            detection = self.url_detector.detect(url)
+            url_type = detection['type']
+            logger.info(f"Stage 1 - URL type: {url_type}")
+
+            # Stage 2: URL Extraction
+            extractor = self._get_extractor(url_type)
+            extracted = await extractor.extract(url, download_id)
+
+            # Update metadata in database
+            self.db.update_download_metadata(
+                download_id,
+                title=extracted['title'],
+                file_size=extracted['file_size']
+            )
+
+            logger.info(f"Stage 2 - URL extraction complete: {extracted['title']}")
+
+            # Stage 3: Download via aria2c
+            filename = f"{extracted['title']}.{self._get_extension(url_type)}"
+            file_path = await self.aria2c_downloader.download(
+                url=extracted['download_url'],
+                filename=filename,
+                download_id=download_id,
+                headers=extracted.get('headers'),
+                cookies=extracted.get('cookies')
+            )
 
             # Download complete - update status and file path
             self.db.update_download_status(download_id, 'downloaded')
-            self.db.update_progress(download_id, progress=100, download_speed=0, eta_seconds=0)
-
-            # Save file path to database for upload
-            with self.db.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    UPDATE downloads
-                    SET file_path = ?, updated_at = ?
-                    WHERE id = ?
-                """, (file_path, datetime.now().isoformat(), download_id))
-                conn.commit()
+            self.db.update_file_path(download_id, file_path)
 
             logger.info(f"Download complete: {download_id} -> {file_path}")
 
@@ -204,108 +199,46 @@ class DownloadPooler:
             will_retry = await self.retry_handler.handle_failure(download_id, error_msg)
 
             if not will_retry:
-                # Notify user of permanent failure
-                await self._notify_download_failed(download, error_msg)
+                # Mark as failed
+                self.db.update_download_status(download_id, 'failed', error_msg)
 
         finally:
             self.current_download_id = None
 
-    async def _download_torrent(self, download_id: int, magnet: str) -> str:
-        """Download torrent via aria2c."""
-        if not self.torrent_manager:
-            raise Exception("TorrentManager not initialized")
+    def _get_extractor(self, url_type: str):
+        """Get appropriate extractor for URL type."""
+        from .extractors import (
+            TorrentExtractor,
+            YtdlpExtractor,
+            PlaywrightExtractor,
+            DirectExtractor
+        )
 
-        # Check aria2c connection
-        if not self.torrent_manager.check_connection():
-            raise Exception("aria2c RPC not connected")
+        # Lazy load extractors
+        if url_type not in self.extractors:
+            if url_type == 'torrent':
+                self.extractors['torrent'] = TorrentExtractor(self.db)
+            elif url_type == 'ytdlp':
+                self.extractors['ytdlp'] = YtdlpExtractor(self.db)
+            elif url_type == 'playwright':
+                self.extractors['playwright'] = PlaywrightExtractor(self.db)
+            elif url_type == 'direct':
+                self.extractors['direct'] = DirectExtractor(self.db)
+            else:
+                logger.warning(f"Unknown URL type: {url_type}")
+                self.extractors[url_type] = DirectExtractor(self.db)
 
-        # Add magnet to aria2c
-        gid = self.torrent_manager.download_magnet(magnet)
-        logger.info(f"Torrent added: {gid}")
+        return self.extractors.get(url_type)
 
-        # Monitor download progress
-        import time
-        last_update = 0
-
-        while True:
-            status = self.torrent_manager.get_status(gid)
-
-            # Update progress in DB
-            if status['status'] in ['active', 'waiting']:
-                progress = int(status.get('progress', 0) * 100)
-                speed = status.get('download_speed', 0) / (1024 * 1024)  # MB/s
-                eta = status.get('eta', 0)
-
-                current_time = time.time()
-                if current_time - last_update >= 5:  # Update every 5s
-                    self.db.update_progress(download_id, progress, speed, eta_seconds=eta)
-                    last_update = current_time
-
-                await asyncio.sleep(2)
-
-            elif status['status'] == 'complete':
-                logger.info(f"Torrent complete: {gid}")
-                return status.get('file_path', '/tmp/downloaded_file')
-
-            elif status['status'] == 'error':
-                raise Exception(f"Torrent download failed: {status.get('error', 'Unknown error')}")
-
-            elif status['status'] == 'removed':
-                raise Exception("Torrent was removed")
-
-            await asyncio.sleep(1)
-
-    async def _download_direct(self, download_id: int, url: str) -> str:
-        """Download direct URL via DirectDownloader (aria2c)."""
-        if not self.direct_downloader:
-            raise Exception("DirectDownloader not initialized")
-
-        return await self.direct_downloader.download_from_ytdlp(url, download_id)
-
-    async def _download_ytdlp(self, download_id: int, url: str) -> str:
-        """Download yt-dlp URL via DirectDownloader (aria2c)."""
-        if not self.direct_downloader:
-            raise Exception("DirectDownloader not initialized")
-
-        return await self.direct_downloader.download_from_ytdlp(url, download_id)
-
-    async def _download_crawler(self, download_id: int, url: str) -> str:
-        """Download via Playwright crawler using DirectDownloader (aria2c)."""
-        if not self.direct_downloader:
-            raise Exception("DirectDownloader not initialized")
-
-        # Get chat_id from download record
-        download = self.db.get_download(download_id)
-        chat_id = download.get('chat_id') if download else None
-
-        if not chat_id:
-            raise ValueError("chat_id required for crawler")
-
-        return await self.direct_downloader.download_from_crawler(url, chat_id, download_id)
-
-    async def _notify_download_failed(self, download: Dict, error: str):
-        """Notify user of download failure."""
-        if not self.bot:
-            return
-
-        chat_id = download.get('chat_id')
-        if not chat_id:
-            return
-
-        message = f"""
-❌ **Download Failed**
-
-{download.get('title', 'Unknown')}
-
-Error: {error}
-
-Retries exhausted.
-        """
-
-        try:
-            await self.bot.send_message(chat_id=chat_id, text=message, parse_mode='Markdown')
-        except Exception as e:
-            logger.error(f"Failed to send failure notification: {e}")
+    def _get_extension(self, url_type: str) -> str:
+        """Get file extension based on URL type."""
+        extensions = {
+            'torrent': 'torrent',
+            'ytdlp': 'mp4',
+            'playwright': 'mp4',
+            'direct': 'mp4'
+        }
+        return extensions.get(url_type, 'mp4')
 
     async def _shutdown(self):
         """Graceful shutdown - wait for current download to complete."""
@@ -323,3 +256,48 @@ Retries exhausted.
                 logger.warning("Download timeout, forcing shutdown")
 
         logger.info("DownloadPooler shutdown complete")
+
+
+# === Main Entry Point (for subprocess execution) ===
+
+if __name__ == "__main__":
+    """Main entry point when run as subprocess."""
+    import sys
+    import logging
+    from pathlib import Path
+
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    # Add project root to path
+    project_root = Path(__file__).parent.parent.parent
+    sys.path.insert(0, str(project_root))
+
+    # Import config
+    import src.config
+    from database.manager import DatabaseManager
+
+    # Initialize database
+    db = DatabaseManager(src.config.DATABASE_PATH)
+
+    # Create and start pooler
+    pooler = DownloadPooler(
+        db=db,
+        download_dir=src.config.DOWNLOAD_DIR,
+        aria2c_rpc_url=src.config.ARIA2C_RPC_URL,
+        aria2c_rpc_secret=src.config.ARIA2C_RPC_SECRET
+    )
+
+    # Run pooler (this blocks until shutdown)
+    try:
+        asyncio.run(pooler.start(poll_interval=src.config.POOLER_POLL_INTERVAL))
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt received")
+    except Exception as e:
+        logger.error(f"Pooler error: {e}", exc_info=True)
+    finally:
+        db.close()
+        logger.info("Pooler exited")

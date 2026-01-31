@@ -51,3 +51,5 @@ nul
 .env
 logs/
 *.log
+
+tests/test_download_module.py

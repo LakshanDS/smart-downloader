@@ -265,6 +265,52 @@ class DatabaseManager:
 
             return [dict(row) for row in cursor.fetchall()]
 
+    def update_download_metadata(self, download_id: int, title: str = None,
+                             file_size: int = None):
+        """Update download metadata."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE downloads
+                SET title = COALESCE(?, title),
+                    file_size = COALESCE(?, file_size)
+                WHERE id = ?
+            """, (title, file_size, download_id))
+            conn.commit()
+
+    def update_file_path(self, download_id: int, file_path: str):
+        """Update file path after download."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE downloads
+                SET file_path = ?
+                WHERE id = ?
+            """, (file_path, download_id))
+            conn.commit()
+
+    def get_downloads_by_status(self, status: str) -> List[Dict]:
+        """Get all downloads with specific status."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM downloads
+                WHERE status = ?
+                ORDER BY added_date ASC
+            """, (status,))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def mark_cancelled(self, download_id: int):
+        """Mark download as cancelled."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE downloads
+                SET cancelled = 1, status = 'cancelled'
+                WHERE id = ?
+            """, (download_id,))
+            conn.commit()
+
     def mark_completed(self, download_id: int):
         """Mark download as completed."""
         with self.get_connection() as conn:

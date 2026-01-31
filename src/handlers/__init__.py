@@ -8,3 +8,4 @@ from .newurls import *
 from .queue import *
 from .downloads import *
 from .help import *
+from .download_control import *

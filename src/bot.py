@@ -39,6 +39,10 @@ from handlers import (
     handle_status,
     handle_url_submission,
     handle_new_url_done,
+    handle_start_downloads,
+    handle_stop_downloads,
+    handle_restart_downloads,
+    handle_downloads_status,
 )
 
 # Setup logs directory
@@ -95,43 +99,32 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def startup_pooler(app: Application):
-    """Initialize pooler process on startup if bot is already set up."""
+    """Initialize download process on startup if bot is already set up."""
     import shared.state as state
-    import os
 
     print("✓ Bot application initialized", file=sys.stderr)
 
     if db.is_locked():
-        print("✓ Bot is set up. Starting pooler process...", file=sys.stderr)
-        logger.info("Bot is set up. Starting pooler process...")
+        print("✓ Bot is set up. Starting download process...", file=sys.stderr)
+        logger.info("Bot is set up. Starting download process...")
         try:
-            from src.pooler.pooler_runner import start_pooler_process
+            from src.pooler import start_download_process
 
-            # Get config from environment or defaults
-            db_path = DATABASE_PATH
-            download_dir = os.getenv('DOWNLOAD_DIR', '/tmp/downloads')
-            aria2c_rpc_url = os.getenv('ARIA2C_RPC_URL', 'http://localhost:6800/jsonrpc')
-            poll_interval = int(os.getenv('POOLER_POLL_INTERVAL', '1'))
+            # Start download process
+            success = start_download_process(db_path=DATABASE_PATH)
 
-            # Start pooler process
-            pooler = start_pooler_process(
-                db_path=db_path,
-                bot_token=BOT_TOKEN,
-                userbot_api_id=os.getenv('UPLOADER_API_ID'),
-                userbot_api_hash=os.getenv('UPLOADER_API_HASH'),
-                userbot_phone=os.getenv('UPLOADER_PHONE'),
-                download_dir=download_dir,
-                aria2c_rpc_url=aria2c_rpc_url,
-                poll_interval=poll_interval
-            )
-
-            state.pooler = pooler
-            logger.info(f"Pooler started (PID: {pooler.get_pid()})")
-            print(f"✓ Pooler started (PID: {pooler.get_pid()})", file=sys.stderr)
+            if success:
+                status = state.pooler.get_status() if hasattr(state, 'pooler') else None
+                pid = status.get('pid') if status else None
+                logger.info(f"Download process started (PID: {pid})")
+                print(f"✓ Download process started (PID: {pid})", file=sys.stderr)
+            else:
+                print(f"⚠ Failed to start download process", file=sys.stderr)
+                logger.warning("Failed to start download process")
 
         except Exception as e:
-            print(f"⚠ Failed to start pooler: {e}", file=sys.stderr)
-            logger.error(f"Failed to start pooler: {e}", exc_info=True)
+            print(f"⚠ Failed to start download process: {e}", file=sys.stderr)
+            logger.error(f"Failed to start download process: {e}", exc_info=True)
     else:
         print("⚠ Bot not set up. Waiting for /setup command...", file=sys.stderr)
         logger.info("Bot not set up. Waiting for /setup command...")
@@ -140,20 +133,20 @@ async def startup_pooler(app: Application):
 
 
 async def shutdown_pooler(app: Application):
-    """Shutdown pooler process on bot shutdown."""
+    """Shutdown download process on bot shutdown."""
     import shared.state as state
 
-    print("Shutting down pooler...", file=sys.stderr)
-    logger.info("Shutting down pooler...")
+    print("Shutting down download process...", file=sys.stderr)
+    logger.info("Shutting down download process...")
 
     try:
-        from src.pooler.pooler_runner import stop_pooler_process
-        stop_pooler_process(timeout=30)
-        print("✓ Pooler stopped", file=sys.stderr)
-        logger.info("Pooler stopped")
+        from src.pooler import stop_download_process
+        stop_download_process(timeout=30)
+        print("✓ Download process stopped", file=sys.stderr)
+        logger.info("Download process stopped")
     except Exception as e:
-        print(f"⚠ Failed to stop pooler: {e}", file=sys.stderr)
-        logger.error(f"Failed to stop pooler: {e}")
+        print(f"⚠ Failed to stop download process: {e}", file=sys.stderr)
+        logger.error(f"Failed to stop download process: {e}")
 
     db.close()
 
@@ -168,6 +161,10 @@ def create_application() -> Application:
     app.add_handler(CommandHandler("userbot_setup", handle_userbot_setup))
     app.add_handler(CommandHandler("help", handle_help_command))
     app.add_handler(CommandHandler("status", handle_status))
+    app.add_handler(CommandHandler("start_downloads", handle_start_downloads))
+    app.add_handler(CommandHandler("stop_downloads", handle_stop_downloads))
+    app.add_handler(CommandHandler("restart_downloads", handle_restart_downloads))
+    app.add_handler(CommandHandler("downloads_status", handle_downloads_status))
 
     # Callbacks
     app.add_handler(CallbackQueryHandler(handle_setup_callback, pattern='^setup_initiate$'))
