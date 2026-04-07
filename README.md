@@ -45,3 +45,10 @@ See [doc/main-plan.md](doc/main-plan.md) for the full development roadmap.
 ## License
 
 MIT
+
+
+Run in venv:
+```
+source .venv/bin/activate
+python run.py
+```
